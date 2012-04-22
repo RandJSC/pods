@@ -1,0 +1,1 @@
+<input<?php echo PodsForm::attributes($attributes, $name, $type, $options); ?> />

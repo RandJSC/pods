@@ -989,9 +989,19 @@ function pods_array ($container) {
  * @since 2.0.0
  */
 function pods_view($view,  $data) {
-	if(!empty($data)) { extract($data); }
-	$view = PODS_DIR.'/views/'.trim($view,'/').'.php';
-	if(file_exists($view)) {
-		include_once($view);
-	}
+	
+		if(!empty($data)) {
+			extract($data);
+		}
+		
+		$theme_file =  rtrim(get_bloginfo('stylesheet_directory'),'/').'/podsviews/'.$view.'.php';
+
+		if( file_exists( $theme_file ) ) {
+			require($file);
+		} elseif(file_exists(PODS_DIR.'/views/'.$view.'.php')) {
+			require(PODS_DIR.'/views/'.$view.'.php');
+		} else {
+			echo "<p>Could not locate view: ".$view.".php</p>";
+		}
+	
 }

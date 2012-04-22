@@ -89,10 +89,9 @@ class PodsForm {
         $attributes = self::merge_attributes($attributes, $options);
         if (isset($options['default']) && strlen($attributes['value']) < 1)
             $attributes['value'] = $options['default'];
-?>
-    <input<?php self::attributes($attributes, $name, $type, $options); ?> />
-<?php
-    }
+			
+				pods_view('fields/text',get_defined_vars());
+		}
 
     /**
      * Output field type 'textarea'
@@ -309,6 +308,7 @@ class PodsForm {
      * @since 2.0.0
      */
     protected function field_boolean ($name, $value = null, $options = null) {
+        
         $options = (array) $options;
         $name_clean = self::clean($name);
         $name_more_clean = self::clean($name, true);
@@ -325,9 +325,8 @@ class PodsForm {
         if (isset($options['default']) && strlen($attributes['value']) < 1)
             $attributes['value'] = $options['default'];
         $attributes['value'] = apply_filters('pods_form_ui_field_' . $type . '_value', $attributes['value'], $name, $attributes, $options);
-?>
-    <input<?php self::attributes($attributes, $name, $type, $options); ?> />
-<?php
+			
+				pods_view('fields/boolean',get_defined_vars());
     }
 
     /**
@@ -353,48 +352,9 @@ class PodsForm {
             $options['data'] = array();
         elseif (!is_array($options['data']))
             $options['data'] = implode(',', $options['data']);
-?>
-    <select<?php self::attributes($attributes, $name, $type, $options); ?>>
-<?php
-        foreach( $options['data'] as $option_value => $option_label ) {
-            if (is_array($option_label)) {
-?>
-        <optgroup label="<?php echo esc_attr($option_value); ?>">
-<?php
-                foreach ($option_label as $sub_option_value => $sub_option_label) {
-                    $sub_option_label = (string) $sub_option_label;
-                    if (is_array($sub_option_label)) {
-?>
-            <option<?php self::attributes($sub_option_label, $name, $type . '_option', $options); ?>><?php echo esc_html($sub_option_label); ?></option>
-<?php
-                    }
-                    else {
-?>
-            <option value="<?php echo esc_attr($sub_option_value); ?>"<?php echo ($value === $sub_option_value ? ' SELECTED' : ''); ?>><?php echo esc_html($sub_option_label); ?></option>
-<?php
-                    }
-                }
-?>
-        </optgroup>
-<?php
-            }
-            else {
-                $option_label = (string) $option_label;
-                if (is_array($option_value)) {
-?>
-        <option<?php self::attributes($option_value, $name, $type . '_option', $options); ?>><?php echo esc_html($option_label); ?></option>
-<?php
-                }
-                else {
-?>
-        <option value="<?php echo esc_attr($option_value); ?>"<?php echo ($value === $option_value ? ' SELECTED' : ''); ?>><?php echo esc_html($option_label); ?></option>
-<?php
-                }
-            }
-        }
-?>
-    </select>
-<?php
+
+				pods_view('fields/pick',get_defined_vars());
+
     }
 
     /**
