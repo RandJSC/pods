@@ -7,6 +7,9 @@
     }
 
     $counter = 1;
+    $primary_name = $name;
+    $primary_id = 'pods-form-ui-' . PodsForm::clean( $name );
+
     foreach ( $options[ 'data' ] as $val => $label ) {
         if ( is_array( $label ) ) {
             if ( isset( $label[ 'label' ] ) )
@@ -26,13 +29,13 @@
 
         $attributes[ 'value' ] = $val;
 
-        if ( 1 < count( $options[ 'data' ] ) && false === strpos( $name, '[]' ) )
-            $name .= '[' . ( $counter - 1 ) . ']';
+        if ( 1 < count( $options[ 'data' ] ) && false === strpos( $primary_name, '[]' ) )
+            $name = $primary_name . '[' . ( $counter - 1 ) . ']';
 
         $attributes = PodsForm::merge_attributes( $attributes, $name, PodsForm::$field_type, $options );
 
         if ( 1 < count( $options[ 'data' ] ) )
-            $attributes[ 'id' ] .= $counter;
+            $attributes[ 'id' ] = $primary_id . $counter;
 
         if ( 1 == $options[ 'grouped' ] ) {
 ?>

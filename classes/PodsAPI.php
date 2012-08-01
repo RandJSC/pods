@@ -874,53 +874,64 @@ class PodsAPI {
             ) );
         }
 
-        // Check post type's taxonomy box and vice versa
-        if ( 'taxonomy' == $pod[ 'type' ] ) {
+        // Sync built-in options for post types and taxonomies
+        if ( in_array( $pod[ 'type' ], array( 'post_type', 'taxonomy' ) ) && empty( $pod[ 'object' ] ) ) {
+            // Build list of 'built_in' for later
+            $built_in = array();
+
             foreach ( $pod[ 'options' ] as $key => $val ) {
-                if ( 0 === strpos( $key, 'built_in_post', 0 ) ) {
-                    // KLUDGE: ugly regex munge. fix if able.
-                    preg_match( '/built_in_post_types_(.+)$/', $key, $key_matches );
-                    $post_type_name = $key_matches[1];
-                    $tax_name = $pod[ 'name' ];
-                    $search_val = 1 ^ $val;
-                    $query = "SELECT p.ID FROM {$wpdb->posts} AS p
-                                LEFT JOIN {$wpdb->postmeta} AS pm ON pm.post_id = p.ID AND pm.meta_key = 'built_in_taxonomies_{$tax_name}'
-                                LEFT JOIN {$wpdb->postmeta} AS pm2 ON pm2.post_id = p.ID AND pm2.meta_key = 'type' AND pm2.meta_value = 'post_type'
-                                LEFT JOIN {$wpdb->postmeta} AS pm3 ON pm3.post_id = p.ID AND pm3.meta_key = 'object' AND pm3.meta_value = ''
-                                WHERE p.post_type = '_pods_pod' AND p.post_name = '{$post_type_name}'
-                                    AND pm2.meta_id IS NOT NULL
-                                    AND (pm.meta_id IS NULL OR pm.meta_value = {$search_val})";
-                    $results = pods_query($query);
-                    
-                    if ( 0 < count( $results ) ) {
-                        $post_type_id = $results[ 0 ]->ID;
-                        delete_post_meta( $post_type_id, "built_in_taxonomies_{$tax_name}" );
-                        add_post_meta( $post_type_id, "built_in_taxonomies_{$tax_name}", (int) $val );
-                    }
-                }
+                if ( false === strpos( $key, 'built_in_' ) )
+                    continue;
+                elseif ( false === strpos( $key, 'built_in_post_types_' ) )
+                    $built_in_type = 'post_type';
+                elseif ( false === strpos( $key, 'built_in_taxonomies_' ) )
+                    $built_in_type = 'taxonomy';
+                else
+                    continue;
+
+                if ( $built_in_type == $pod[ 'type' ] )
+                    continue;
+
+                if ( !isset( $built_in[ $built_in_type ] ) )
+                    $built_in[ $built_in_type ] = array();
+
+                $built_in_object = str_replace( array( 'built_in_post_types_', 'built_in_taxonomies_' ), '', $key );
+
+                $built_in[ $built_in_type ][ $built_in_object ] = max( pods_absint( $val ), 1 );
             }
-        }
-        elseif ( 'post_type' == $pod[ 'type' ] ) {
-            foreach ( $pod[ 'options' ] as $key => $val ) {
-                if ( 0 === strpos( $key, 'built_in_taxonomies', 0 ) ) {
-                    // KLUDGE: same thing
-                    preg_match( '/built_in_taxonomies_(.+)$/', $key, $key_matches );
-                    $tax_name = $key_matches[1];
-                    $post_type_name = $pod[ 'name' ];
+
+            $lookup_option = $lookup_built_in = false;
+
+            $lookup_name = $pod[ 'name' ];
+
+            if ( 'post_type' == $pod[ 'type' ] && isset( $built_in[ $pod[ 'type' ] ] ) ) {
+                $lookup_option = 'built_in_post_types_' . $lookup_name;
+                $lookup_built_in = 'taxonomy';
+            }
+            elseif ( 'taxonomy' == $pod[ 'type' ] && isset( $built_in[ $pod[ 'type' ] ] ) ) {
+                $lookup_option = 'built_in_taxonomies_' . $lookup_name;
+                $lookup_built_in = 'post_type';
+            }
+
+            if ( !empty( $lookup_option ) && !empty( $lookup_built_in ) ) {
+                foreach ( $built_in[ $lookup_built_in ] as $built_in_object => $val ) {
                     $search_val = 1 ^ $val;
+
                     $query = "SELECT p.ID FROM {$wpdb->posts} AS p
-                                LEFT JOIN {$wpdb->postmeta} AS pm ON pm.post_id = p.ID AND pm.meta_key = 'built_in_post_types_{$post_type_name}'
-                                LEFT JOIN {$wpdb->postmeta} AS pm2 ON pm2.post_id = p.ID AND pm2.meta_key = 'type' AND pm2.meta_value = 'taxonomy'
+                                LEFT JOIN {$wpdb->postmeta} AS pm ON pm.post_id = p.ID AND pm.meta_key = '{$lookup_option}'
+                                LEFT JOIN {$wpdb->postmeta} AS pm2 ON pm2.post_id = p.ID AND pm2.meta_key = 'type' AND pm2.meta_value = '{$lookup_built_in}'
                                 LEFT JOIN {$wpdb->postmeta} AS pm3 ON pm3.post_id = p.ID AND pm3.meta_key = 'object' AND pm3.meta_value = ''
-                                WHERE p.post_type = '_pods_pod' AND p.post_name = '{$tax_name}'
+                                WHERE p.post_type = '_pods_pod' AND p.post_name = '{$built_in_object}'
                                     AND pm2.meta_id IS NOT NULL
-                                    AND (pm.meta_id IS NULL OR pm.meta_value = {$search_val})";
-                    $results = pods_query($query);
-                    
-                    if ( 0 < count( $results ) ) {
-                        $tax_id = $results[ 0 ]->ID;
-                        delete_post_meta( $tax_id, "built_in_post_types_{$post_type_name}" );
-                        add_post_meta( $tax_id, "built_in_post_types_{$post_type_name}", (int) $val );
+                                    AND ( pm.meta_id IS NULL OR pm.meta_value = {$search_val} )";
+
+                    $results = pods_query( $query );
+
+                    if ( !empty( $results ) ) {
+                        foreach ( $results as $the_pod ) {
+                            delete_post_meta( $the_pod->ID, $lookup_option );
+                            add_post_meta( $the_pod->ID, $lookup_option, $val );
+                        }
                     }
                 }
             }
