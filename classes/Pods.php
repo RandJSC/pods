@@ -112,6 +112,7 @@ class Pods {
         $this->fields =& $this->api->fields;
         $this->detail_page =& $this->data->detail_page;
         $this->id =& $this->data->id;
+        $this->row =& $this->data->row;
         $this->results =& $this->data->data;
 
         if ( is_array( $id ) || is_object( $id ) )
@@ -186,16 +187,23 @@ class Pods {
                 return null;
         }
 
+        if ( $this->data->field_id == $params->name ) {
+            if ( isset( $this->row[ $params->name ] ) )
+                return $this->row[ $params->name ];
+            else
+                return 0;
+        }
+
         $value = null;
 
         $tableless_field_types = $this->do_hook( 'tableless_field_types', array( 'pick', 'file' ) );
 
         if ( 'detail_url' == $params->name )
             $value = get_bloginfo( 'url' ) . '/' . $this->do_template( $this->detail_page );
-        elseif ( isset( $this->fields[ $params->name ] ) && isset( $this->row[ $params->name ] ) ) {
+        elseif ( isset( $this->row[ $params->name ] ) ) {
             $value = $this->row[ $params->name ];
 
-            if ( in_array( $this->fields[ $params->name ][ 'type' ], $tableless_field_types ) ) {
+            if ( isset( $this->fields[ $params->name ] ) && in_array( $this->fields[ $params->name ][ 'type' ], $tableless_field_types ) ) {
                 if ( 'custom-simple' == $this->fields[ $params->name ][ 'pick_object' ] ) {
                     if ( empty( $value ) )
                         return array();
@@ -237,12 +245,16 @@ class Pods {
             }
 
             if ( !isset( $this->fields[ $params->name ] ) || !in_array( $this->fields[ $params->name ][ 'type' ], $tableless_field_types ) || $simple ) {
+                pods_no_conflict_on( $this->pod_data[ 'type' ] );
+
                 if ( in_array( $this->pod_data[ 'type' ], array( 'post_type', 'media' ) ) )
-                    $value = get_post_meta( $this->id, $params->name, $params->single );
+                    $value = get_post_meta( $this->id(), $params->name, $params->single );
                 elseif ( 'user' == $this->pod_data[ 'type' ] )
-                    $value = get_user_meta( $this->id, $params->name, $params->single );
+                    $value = get_user_meta( $this->id(), $params->name, $params->single );
                 elseif ( 'comment' == $this->pod_data[ 'type' ] )
-                    $value = get_comment_meta( $this->id, $params->name, $params->single );
+                    $value = get_comment_meta( $this->id(), $params->name, $params->single );
+
+                pods_no_conflict_off( $this->pod_data[ 'type' ] );
             }
             else {
                 // Not ready yet
@@ -395,12 +407,12 @@ class Pods {
     public function find ( $params = null, $limit = 15, $where = null, $sql = null ) {
         $defaults = array(
             'table' => $this->data->table,
-            'select' => 't.*',
+            'select' => '`t`.*',
             'join' => null,
             'where' => $where,
             'groupby' => null,
             'having' => null,
-            'orderby' => "`t`.`{$this->data->field_id}` DESC",
+            'orderby' => null,
             'limit' => (int) $limit,
             'page' => (int) $this->page,
             'search' => (boolean) $this->search,
@@ -421,9 +433,15 @@ class Pods {
         $this->page = (int) $params->page;
         $this->search = (boolean) $params->search;
 
-        // also need to do better search/filtering using search_mode and auto join stuff for pick/file fields
-
         $params = $this->do_hook( 'find', $params );
+
+        // Add "`t`." prefix to $orderby if needed
+        if ( !empty( $params->orderby ) && false === strpos( $params->orderby, ',' ) && false === strpos( $params->orderby, '(' ) && false === strpos( $params->orderby, '.' ) ) {
+            if ( false !== strpos( $params->orderby, ' ASC' ) )
+                $params->orderby = '`t`.`' . trim( str_replace( array( '`', ' ASC' ), '', $params->orderby ) ) . '` ASC';
+            else
+                $params->orderby = '`t`.`' . trim( str_replace( array( '`', ' DESC' ), '', $params->orderby ) ) . '` DESC';
+        }
 
         $this->data->select( $params );
 
@@ -438,7 +456,7 @@ class Pods {
     public function fetch ( $id = null ) {
         $this->do_hook( 'fetch', $id );
 
-        $this->row =& $this->data->fetch( $id );
+        $this->data->fetch( $id );
 
         return $this->row;
     }
@@ -448,12 +466,10 @@ class Pods {
      *
      * @since 2.0.0
      */
-    public function reset ( $row = 0 ) {
-        $this->do_hook( 'reset' );
+    public function reset ( $row = null ) {
+        $this->do_hook( 'reset', $row );
 
-        $row = pods_absint( $row );
-
-        $this->row =& $this->data->fetch( $row );
+        $this->data->reset( $row );
 
         return $this->row;
     }
@@ -527,7 +543,7 @@ class Pods {
             $data = array( $data => $value );
 
         if ( null === $id )
-            $id = $this->id;
+            $id = $this->id();
 
         $data = (array) $this->do_hook( 'save', $data, $id );
 
@@ -546,7 +562,7 @@ class Pods {
      */
     public function delete ( $id = null ) {
         if ( null === $id )
-            $id = $this->id;
+            $id = $this->id();
 
         $id = (int) $this->do_hook( 'delete', $id );
 
@@ -565,7 +581,7 @@ class Pods {
      */
     public function duplicate ( $id = null ) {
         if ( null === $id )
-            $id = $this->id;
+            $id = $this->id();
 
         $id = (int) $this->do_hook( 'duplicate', $id );
 
@@ -584,7 +600,7 @@ class Pods {
      */
     public function export ( $fields = null, $id = null ) {
         if ( null === $id )
-            $id = $this->id;
+            $id = $this->id();
 
         $fields = (array) $this->do_hook( 'export', $fields, $id );
 

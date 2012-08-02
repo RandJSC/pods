@@ -3,7 +3,7 @@
 Plugin Name: Pods Framework
 Plugin URI: http://podsframework.org/
 Description: Create / Manage / Develop / Extend content types: Posts, Pages, Media, Custom Post Types, Categories, Tags, Custom Taxonomy, Comments, Users, Custom Content Types, and Custom Tables
-Version: 2.0.0 Alpha 33
+Version: 2.0.0 Alpha 34
 Author: The Pods Framework Team
 Author URI: http://podsframework.org/about/
 
@@ -29,7 +29,7 @@ if ( defined( 'PODS_VERSION' ) ) {
     return;
 }
 
-define( 'PODS_VERSION', '2.0.0-a-33' );
+define( 'PODS_VERSION', '2.0.0-a-34' );
 
 if ( !defined( 'PODS_WP_VERSION_MINIMUM' ) )
     define( 'PODS_WP_VERSION_MINIMUM', '3.4' );
@@ -82,11 +82,10 @@ if ( is_admin() ) { // note the use of is_admin() to double check that this is h
     new WPGitHubUpdater( $config );
 }
 
-global $pods, $pods_init, $pods_components, $pods_admin, $pod_page_exists;
+global $pods, $pods_init, $pod_page_exists;
 if ( false !== pods_compatible() && ( !defined( 'SHORTINIT' ) || !SHORTINIT ) ) {
     if ( !defined( 'PODS_DEPRECATED' ) || PODS_DEPRECATED )
         require_once( PODS_DIR . 'deprecated/deprecated.php' );
 
     $pods_init = pods_init();
-    $pods_components = pods_components();
 }
