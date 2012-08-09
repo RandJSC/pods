@@ -124,28 +124,28 @@
                         if ( -1 == d.indexOf( '<e>' ) && -1 != d ) {
                             if ( 'undefined' != typeof pods_admin_submit_callback )
                                 pods_admin_submit_callback( d );
-                            else if ( 'undefined' != typeof $submitbutton.data( 'location' ) )
-                                document.location.href = $submitbutton.data( 'location' );
+                            else if ( 'undefined' != typeof $submittable.data( 'location' ) )
+                                document.location.href = $submittable.data( 'location' );
                             else
                                 document.location.reload( true );
                         }
                         else if ( 'undefined' != typeof pods_admin_submit_error_callback )
                             pods_admin_submit_error_callback( d.replace( '<e>', '' ).replace( '</e>', '' ) );
-                        else if ( 'undefined' != typeof $submitbutton.data( 'error-location' ) )
-                            document.location.href = $submitbutton.data( 'error-location' );
+                        else if ( 'undefined' != typeof $submittable.data( 'error-location' ) )
+                            document.location.href = $submittable.data( 'error-location' );
                         else {
                             alert( 'Error: ' + d.replace( '<e>', '' ).replace( '</e>', '' ) );
                             console.log( d.replace( '<e>', '' ).replace( '</e>', '' ) );
 
-                            $submitbutton.css( 'cursor', 'pointer' );
-                            $submitbutton.prop( 'disabled', false );
-                            $submitbutton.parent().find( '.waiting' ).fadeOut();
+                            $submittable.css( 'cursor', 'pointer' );
+                            $submittable.prop( 'disabled', false );
+                            $submittable.parent().find( '.waiting' ).fadeOut();
                         }
                     },
                     error : function () {
-                        $submitbutton.css( 'cursor', 'pointer' );
-                        $submitbutton.prop( 'disabled', false );
-                        $submitbutton.parent().find( '.waiting' ).fadeOut();
+                        $submittable.css( 'cursor', 'pointer' );
+                        $submittable.prop( 'disabled', false );
+                        $submittable.parent().find( '.waiting' ).fadeOut();
 
                         alert( 'Unable to process request, please try again.' );
                     },
@@ -365,12 +365,18 @@
         wizard : function () {
             var methods = {
                 setFinished : function () {
-                    $( '#pods-wizard-next' ).text( 'Finished' );
+                    $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data('finished' ) );
                 },
                 setProgress : function () {
-                    $( '#pods-wizard-next' ).text( 'Next Step' );
+                    $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'next ' ) );
                 },
                 stepForward : function () {
+                    // Show action bar for second panel if hidden
+                    $( 'div.pods-wizard-hide-first' )
+                        .removeClass( 'pods-wizard-hide-first' )
+                        // Remember that first panel should hide action bar
+                        .data( 'hide', 1 );
+
                     // Step toolbar menu state forwards
                     $( 'li.pods-wizard-menu-current' )
                         .removeClass( 'pods-wizard-menu-current' )
@@ -378,22 +384,58 @@
                         .next( 'li' )
                         .addClass( 'pods-wizard-menu-current' );
 
+                    // Get current step #
+                    var step = false;
+
+                    if ( $( 'li.pods-wizard-menu-current[data-step]' )[ 0 ] )
+                        step = $( 'li.pods-wizard-menu-current' ).data( 'step' );
+
                     // Show start over button
                     $( '#pods-wizard-start' ).show();
 
+                    // Allow for override
+                    var check = true;
+
                     // Check if last step
-                    if ( $( '.pods-wizard-panel:visible' ).next( '.pods-wizard-panel' ).length ) {
+                    if ( $( 'div.pods-wizard-panel:visible' ).next( 'div.pods-wizard-panel' ).length ) {
                         // Show next panel
-                        $( '.pods-wizard-panel:visible' )
+                        $( 'div.pods-wizard-panel:visible' )
                             .hide()
                             .next()
                             .show();
+
+                        // Allow for override
+                        if ( 'undefined' != typeof pods_admin_wizard_callback )
+                            check = pods_admin_wizard_callback( step );
+
+                        if ( false === check )
+                            return check;
+                    }
+                    else if ( $( '#pods-wizard-box' ).closest( 'form' )[ 0 ] ) {
+                        $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'processing' ) );
+                        $( '#pods-wizard-next' ).attr( 'disabled', true );
+                        $( '#pods-wizard-box' ).closest( 'form' ).submit();
                     }
                     else {
+                        // Allow for override
+                        if ( 'undefined' != typeof pods_admin_wizard_callback )
+                            check = pods_admin_wizard_callback( step );
+
+                        if ( false === check )
+                            return check;
+
                         methods.setFinished();
                     }
                 },
                 startOver : function () {
+                    // Reset next button text
+                    methods.setProgress();
+
+                    // If first panel and action bar is supposed to be hidden, hide it.
+                    var $box = $( '#pods-wizard-box' );
+                    if ( $box.data( 'hide' ) )
+                        $box.addClass( 'pods-wizard-hide-first' );
+
                     // Revert to first current menu item
                     $( '#pods-wizard-heading ul li' )
                         .removeClass()
@@ -401,7 +443,7 @@
                         .addClass( 'pods-wizard-menu-current' );
 
                     // Revert to first panel
-                    $( '.pods-wizard-panel' )
+                    $( 'div.pods-wizard-panel' )
                         .hide()
                         .first()
                         .show();
@@ -409,13 +451,15 @@
                     // Hide start over button
                     $( '.pods-wizard-option-selected' ).removeClass();
                     $( '#pods-wizard-start' ).hide();
-                    $( '.stuffbox' ).hide();
+                    $( 'div.pods-wizard-option-cont' ).hide();
                     $( '#pods-wizard-choices' ).fadeIn( 'fast' );
                 }
             }
+
             // Next button event binding
             $( '#pods-wizard-next' ).on( 'click', function ( e ) {
                 e.preventDefault();
+
                 methods.stepForward();
             } );
 
@@ -430,6 +474,7 @@
             // Upgrade choice button event binding
             $( '.pods-choice-button' ).on( 'click', function ( e ) {
                 e.preventDefault();
+
                 var target = $( this ).attr( 'href' );
                 $( '#pods-wizard-choices' ).slideUp( 'fast' );
                 $( target ).slideDown( 'fast' );
@@ -438,19 +483,11 @@
             // Create/extend option event binding
             $( '.pods-wizard-option a' ).on( 'click', function ( e ) {
                 e.preventDefault();
-                $( '.stuffbox' ).hide();
+
+                $( '.pods-wizard-option-content' ).hide();
                 var target = $( this ).attr( 'href' );
                 $( target ).show();
-                $( 'a.pods-wizard-option-active' ).removeClass();
-                $( this ).addClass( 'pods-wizard-option-active' );
-            } );
-
-            // Advanced anchor event binding
-            $( '.pods-advanced-toggle' ).on( 'click', function () {
-                var target = $( this ).attr( 'href' ),
-                    target = target.replace( '#', '.' );
-                $( this ).parent( 'p' ).slideUp( 'fast' );
-                $( target ).slideDown( 'fast' );
+                methods.stepForward();
             } );
 
             // Initial step panel setup
@@ -685,10 +722,14 @@
             $( document ).on( 'click', '.pods-advanced-toggle', function ( e ) {
                 $advanced = $( this ).closest( 'div' ).find( '.pods-advanced' );
 
-                if ( $advanced.is( ':visible' ) )
+                if ( $advanced.is( ':visible' ) ) {
+                    $( this ).text( $( this ).text().replace( '-', '+' ) );
                     $advanced.slideUp();
-                else
+                }
+                else {
+                    $( this ).text( $( this ).text().replace( '+', '-' ) );
                     $advanced.slideDown();
+                }
 
                 e.preventDefault();
             } );

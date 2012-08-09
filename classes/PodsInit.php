@@ -9,7 +9,7 @@ class PodsInit {
 
     static $admin;
 
-    public $version;
+    static $version;
 
     /**
      * Setup and Initiate Pods
@@ -18,11 +18,11 @@ class PodsInit {
      * @since 1.8.9
      */
     function __construct () {
-        $this->version = get_option( 'pods_framework_version' );
+        self::$version = get_option( 'pods_framework_version' );
 
         add_action( 'init', array( $this, 'activate_install' ), 9 );
 
-        if ( !empty( $this->version ) ) {
+        if ( !empty( self::$version ) ) {
             // Init Pods Form
             pods_form();
 
@@ -248,7 +248,7 @@ class PodsInit {
                 $cpt_labels[ 'edit_item' ] = pods_var( 'edit_item', $post_type, 'Edit ' . $cpt_singular, null, true );
                 $cpt_labels[ 'view' ] = pods_var( 'view', $post_type, 'View ' . $cpt_singular, null, true );
                 $cpt_labels[ 'view_item' ] = pods_var( 'view_item', $post_type, 'View ' . $cpt_singular, null, true );
-                $cpt_labels[ 'all_items' ] = pods_var( 'all_items', $post_type, 'All ' . $cpt_singular, null, true );
+                $cpt_labels[ 'all_items' ] = pods_var( 'all_items', $post_type, 'All ' . $cpt_labelp, null, true );
                 $cpt_labels[ 'search_items' ] = pods_var( 'search_items', $post_type, 'Search ' . $cpt_label, null, true );
                 $cpt_labels[ 'not_found' ] = pods_var( 'not_found', $post_type, 'No ' . $cpt_label . ' Found', null, true );
                 $cpt_labels[ 'not_found_in_trash' ] = pods_var( 'not_found_in_trash', $post_type, 'No ' . $cpt_label . ' Found in Trash', null, true );
@@ -497,7 +497,7 @@ class PodsInit {
 
         add_action( 'wpmu_new_blog', array( $this, 'new_blog' ), 10, 6 );
 
-        $pods_version = $this->version;
+        $pods_version = self::$version;
 
         if ( empty( $pods_version ) || false === strpos( $pods_version, '.' ) || version_compare( $pods_version, PODS_VERSION, '<' ) )
             $this->setup();
@@ -531,7 +531,7 @@ class PodsInit {
             $_blog_id = null;
 
         // Setup DB tables
-        $pods_version = $this->version;
+        $pods_version = self::$version;
 
         if ( 0 < strlen( $pods_version ) ) {
             if ( false === strpos( $pods_version, '.' ) )
