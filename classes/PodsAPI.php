@@ -789,6 +789,9 @@ class PodsAPI {
 
         $pod[ 'options' ] = array_merge( $pod[ 'options' ], $options );
 
+        if ( strlen( $pod[ 'label' ] ) < 1 )
+            $pod[ 'label' ] = $pod[ 'name' ];
+
         $params->id = $pod[ 'id' ];
         $params->name = $pod[ 'name' ];
 
@@ -868,7 +871,8 @@ class PodsAPI {
                 'ID' => $pod[ 'id' ],
                 'post_name' => $pod[ 'name' ],
                 'post_title' => $pod[ 'label' ],
-                'post_content' => $pod[ 'description' ]
+                'post_content' => $pod[ 'description' ],
+                'post_status' => 'publish'
             );
         }
 
@@ -1148,12 +1152,15 @@ class PodsAPI {
 
             foreach ( $aliases as $alias ) {
                 if ( isset( $options[ $alias ] ) ) {
-                    $field[ $exclude_field ] = $options[ $alias ];
+                    $field[ $exclude_field ] = trim( $options[ $alias ] );
 
                     unset( $options[ $alias ] );
                 }
             }
         }
+
+        if ( strlen( $field[ 'label' ] ) < 1 )
+            $field[ 'label' ] = $field[ 'name' ];
 
         $field[ 'options' ][ 'type' ] = $field[ 'type' ];
 
@@ -1166,12 +1173,12 @@ class PodsAPI {
                     $field[ 'pick_val' ] = pods_str_replace( 'pod-', '', $field[ 'pick_object' ], 1 );
                     $field[ 'pick_object' ] = 'pod';
                 }
-                elseif ( 0 === strpos( 'post-types-', $field[ 'pick_object' ] ) ) {
-                    $field[ 'pick_val' ] = pods_str_replace( 'post-types-', '', $field[ 'pick_object' ], 1 );
+                elseif ( 0 === strpos( 'post-type-', $field[ 'pick_object' ] ) ) {
+                    $field[ 'pick_val' ] = pods_str_replace( 'post-type-', '', $field[ 'pick_object' ], 1 );
                     $field[ 'pick_object' ] = 'post_type';
                 }
-                elseif ( 0 === strpos( 'taxonomies-', $field[ 'pick_object' ] ) ) {
-                    $field[ 'pick_val' ] = pods_str_replace( 'taxonomies-', '', $field[ 'pick_object' ], 1 );
+                elseif ( 0 === strpos( 'taxonomy-', $field[ 'pick_object' ] ) ) {
+                    $field[ 'pick_val' ] = pods_str_replace( 'taxonomy-', '', $field[ 'pick_object' ], 1 );
                     $field[ 'pick_object' ] = 'taxonomy';
                 }
             }
@@ -2578,9 +2585,12 @@ class PodsAPI {
             'description' => $_pod[ 'post_content' ]
         );
 
+        if ( strlen( $pod[ 'label' ] ) < 1 )
+            $pod[ 'label' ] = $pod[ 'name' ];
+
         // @todo update with a method to put all options in
         $defaults = array(
-            'is_toplevel' => 1,
+            'show_in_menu' => 1,
             'type' => 'post_type',
             'storage' => 'meta',
             'object' => '',
@@ -2650,7 +2660,7 @@ class PodsAPI {
         $params = (object) pods_sanitize( $params );
 
         $order = 'ASC';
-        $orderby = 'menu_order';
+        $orderby = 'menu_order title';
         $limit = -1;
 
         $meta_query = array();
@@ -2722,7 +2732,7 @@ class PodsAPI {
         else
             $cache_key = 'pods_get' . $cache_key;
 
-        if ( ( 'pods' != $cache_key || empty( $meta_query ) ) && empty( $limit ) && ( empty ( $orderby ) || 'menu_order' == $orderby ) ) {
+        if ( ( 'pods' != $cache_key || empty( $meta_query ) ) && empty( $limit ) && ( empty ( $orderby ) || 'menu_order title' == $orderby ) ) {
             $the_pods = get_transient( $cache_key );
 
             if ( false !== $the_pods )
@@ -2943,10 +2953,10 @@ class PodsAPI {
 
             foreach ( $pod[ 'fields' ] as $field ) {
                 if ( empty( $params->name ) && empty( $params->id ) && empty( $params->type ) )
-                    $fields[ $field[ 'id' ] ] = $field;
+                    $fields[ $field[ 'name' ] ] = $field;
 
                 if ( in_array( $fields[ 'name' ], $params->name ) || in_array( $fields[ 'id' ], $params->id ) || in_array( $fields[ 'type' ], $params->type ) )
-                    $fields[ $field[ 'id' ] ] = $field;
+                    $fields[ $field[ 'name' ] ] = $field;
             }
         }
         else {
@@ -2982,7 +2992,7 @@ class PodsAPI {
                     ) );
 
                     if ( empty( $params->type ) || in_array( $fields[ 'type' ], $params->type ) )
-                        $fields[ $field[ 'id' ] ] = $field;
+                        $fields[ $field[ 'name' ] ] = $field;
                 }
             }
         }
