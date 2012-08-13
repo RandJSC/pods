@@ -6,6 +6,8 @@
  *
  * Version: 1.0
  *
+ * Developer Mode: on
+ *
  * Plugin Dependency: Gravity Forms|gravityforms/gravityforms.php|http://www.gravityforms.com/
  *
  * @package pods
@@ -173,7 +175,7 @@ class Pods_GravityForms extends PodsComponent {
                 unset( $pods[ $k ] );
         }
 
-        echo pods_view( dirname( __FILE__ ) . '/ui/add.php', get_defined_vars() );
+        pods_view( dirname( __FILE__ ) . '/ui/add.php', get_defined_vars() );
     }
 
     function admin_edit ( $dup, $ui ) {
@@ -185,7 +187,7 @@ class Pods_GravityForms extends PodsComponent {
 
         pods_debug( $gravity_form, false );
 
-        echo pods_view( dirname( __FILE__ ) . '/ui/edit.php', get_defined_vars() );
+        pods_view( dirname( __FILE__ ) . '/ui/edit.php', get_defined_vars() );
     }
 
     function admin_delete ( $id, &$ui ) {
@@ -406,7 +408,7 @@ class Pods_GravityForms extends PodsComponent {
                         if ( is_array( $v ) ) {
                             $v = implode( ',', $v );
                         }
-                        $value[ ] = $v;
+                        $value[] = $v;
                     }
                     $max = 10;
                     for ( $x = 1; $x <= 10; $x++ ) {
@@ -415,7 +417,7 @@ class Pods_GravityForms extends PodsComponent {
                             if ( is_array( $v ) ) {
                                 $v = implode( ',', $v );
                             }
-                            $value[ ] = $v;
+                            $value[] = $v;
                         }
                     }
                 }
@@ -771,7 +773,7 @@ class Pods_GravityForms extends PodsComponent {
                     while (isset( $entry[ $field_id . '.' . $field_counter ] )) {
                         $entry[ $field_id . '.' . $field_counter ] = trim( $entry[ $field_id . '.' . $field_counter ] );
                         if ( 0 < strlen( $entry[ $field_id . '.' . $field_counter ] ) ) {
-                            $values[ ] = $entry[ $field_id . '.' . $field_counter ];
+                            $values[] = $entry[ $field_id . '.' . $field_counter ];
                         }
                         $field_counter++;
                     }

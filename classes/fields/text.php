@@ -187,7 +187,7 @@ class PodsField_Text extends PodsField {
      * @since 2.0.0
      */
     public function display ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
-        if ( 1 == $options[ 'text_allow_shortcode' ] )
+        if ( 1 == pods_var( 'text_allow_shortcode', $options ) )
             $value = do_shortcode( $value );
 
         return $value;
@@ -212,16 +212,14 @@ class PodsField_Text extends PodsField {
 
         $field_type = 'text';
 
-        if ( 'email' == $options[ 'text_format_type' ] )
+        if ( 'email' == pods_var( 'text_format_type', $options ) )
             $field_type = 'email';
-        elseif ( 'website' == $options[ 'text_format_type' ] )
+        elseif ( 'website' == pods_var( 'text_format_type', $options ) )
             $field_type = 'url';
-        elseif ( 'phone' == $options[ 'text_format_type' ] )
+        elseif ( 'phone' == pods_var( 'text_format_type', $options ) )
             $field_type = 'phone';
-        elseif ( 'password' == $options[ 'text_format_type' ] )
+        elseif ( 'password' == pods_var( 'text_format_type', $options ) )
             $field_type = 'password';
-        elseif ( 'color' == $options[ 'text_format_type' ] )
-            $field_type = 'color';
 
         pods_view( PODS_DIR . 'ui/fields/' . $field_type . '.php', compact( array_keys( get_defined_vars() ) ) );
     }
@@ -262,7 +260,7 @@ class PodsField_Text extends PodsField {
             $errors = $check;
         else {
             if ( 0 < strlen( $value ) && strlen( $check ) < 1 ) {
-                if ( 1 == $options[ 'required' ] )
+                if ( 1 == pods_var( 'required', $options ) )
                     $errors[] = __( 'This field is required.', 'pods' );
                 else {
                     // @todo Ask for a specific format in error message
@@ -293,22 +291,22 @@ class PodsField_Text extends PodsField {
     public function pre_save ( $value, $id = null, $name = null, $options = null, $fields = null, $pod = null, $params = null ) {
         $options = (array) $options;
 
-        if ( 'plain' == $options[ 'text_format_type' ] ) {
-            if ( 1 == $options[ 'text_allow_html' ] ) {
-                if ( 0 < strlen( $options[ 'text_allowed_html_tags' ] ) )
-                    $value = strip_tags( $value, $options[ 'text_allowed_html_tags' ] );
+        if ( 'plain' == pods_var( 'text_format_type', $options ) ) {
+            if ( 1 == pods_var( 'text_allow_html', $options ) ) {
+                if ( 0 < strlen( pods_var( 'text_allowed_html_tags', $options ) ) )
+                    $value = strip_tags( $value, pods_var( 'text_allowed_html_tags', $options ) );
             }
             else
                 $value = strip_tags( $value );
 
-            if ( 1 != $options[ 'text_allow_shortcode' ] )
+            if ( 1 != pods_var( 'text_allow_shortcode', $options ) )
                 $value = strip_shortcodes( $value );
         }
-        elseif ( 'email' == $options[ 'text_format_type' ] ) {
+        elseif ( 'email' == pods_var( 'text_format_type', $options ) ) {
             if ( !is_email( $value ) )
                 $value = '';
         }
-        elseif ( 'website' == $options[ 'text_format_type' ] && 0 < strlen( $options[ 'text_format_website' ] ) ) {
+        elseif ( 'website' == pods_var( 'text_format_type', $options ) && 0 < strlen( pods_var( 'text_format_website', $options ) ) ) {
             if ( false === strpos( $value, '://' ) )
                 $value = 'http://' . $value;
 
@@ -327,32 +325,32 @@ class PodsField_Text extends PodsField {
 
                 $url = array_merge( $defaults, $url );
 
-                if ( 'normal' == $options[ 'text_format_website' ] )
+                if ( 'normal' == pods_var( 'text_format_website', $options ) )
                     $value = $this->build_url( $url );
-                elseif ( 'no-www' == $options[ 'text_format_website' ] ) {
+                elseif ( 'no-www' == pods_var( 'text_format_website', $options ) ) {
                     if ( 0 === strpos( $url[ 'host' ], 'www.' ) )
                         $url[ 'host' ] = substr( $url[ 'host' ], 4 );
 
                     $value = $this->build_url( $url );
                 }
-                elseif ( 'force-www' == $options[ 'text_format_website' ] ) {
+                elseif ( 'force-www' == pods_var( 'text_format_website', $options ) ) {
                     if ( false !== strpos( $url[ 'host' ], '.' ) && false === strpos( $url[ 'host' ], '.', 1 ) )
                         $url[ 'host' ] = 'www.' . $url[ 'host' ];
 
                     $value = $this->build_url( $url );
                 }
-                elseif ( 'no-http' == $options[ 'text_format_website' ] ) {
+                elseif ( 'no-http' == pods_var( 'text_format_website', $options ) ) {
                     $value = $this->build_url( $url );
                     $value = str_replace( $url[ 'scheme' ] . '://', '', $value );
                 }
-                elseif ( 'no-http-no-www' == $options[ 'text_format_website' ] ) {
+                elseif ( 'no-http-no-www' == pods_var( 'text_format_website', $options ) ) {
                     if ( 0 === strpos( $url[ 'host' ], 'www.' ) )
                         $url[ 'host' ] = substr( $url[ 'host' ], 4 );
 
                     $value = $this->build_url( $url );
                     $value = str_replace( $url[ 'scheme' ] . '://', '', $value );
                 }
-                elseif ( 'no-http-force-www' == $options[ 'text_format_website' ] ) {
+                elseif ( 'no-http-force-www' == pods_var( 'text_format_website', $options ) ) {
                     if ( false !== strpos( $url[ 'host' ], '.' ) && false === strpos( $url[ 'host' ], '.', 1 ) )
                         $url[ 'host' ] = 'www.' . $url[ 'host' ];
 
@@ -361,13 +359,13 @@ class PodsField_Text extends PodsField {
                 }
             }
         }
-        elseif ( 'phone' == $options[ 'text_format_type' ] && 0 < strlen( $options[ 'text_format_phone' ] ) ) {
-            if ( 'international' == $options[ 'text_format_phone' ] ) {
+        elseif ( 'phone' == pods_var( 'text_format_type', $options ) && 0 < strlen( pods_var( 'text_format_phone', $options ) ) ) {
+            if ( 'international' == pods_var( 'text_format_phone', $options ) ) {
                 // no validation/changes
             }
             else {
                 // Clean input
-                $number = preg_replace( '/([^0-9ext])/g', ' ', $value );
+                $number = preg_replace( '/([^0-9ext])/', ' ', $value );
 
                 $number = str_replace(
                     array( '-', '.', 'ext', 'x', 't', 'e', '(', ')' ),
@@ -378,8 +376,8 @@ class PodsField_Text extends PodsField {
                 // Get extension
                 $extension = explode( '|', $number );
                 if ( 1 < count( $extension ) ) {
-                    $number = preg_replace( '/([^0-9])/g', ' ', $extension[ 0 ] );
-                    $extension = preg_replace( '/([^0-9])/g', ' ', $extension[ 1 ] );
+                    $number = preg_replace( '/([^0-9])/', ' ', $extension[ 0 ] );
+                    $extension = preg_replace( '/([^0-9])/', ' ', $extension[ 1 ] );
                 }
                 else
                     $extension = '';
@@ -395,19 +393,19 @@ class PodsField_Text extends PodsField {
                     $numbers = array( $numbers[ 0 ], $numbers[ 1 ] );
 
                 // Format number
-                if ( '(999) 999-9999 x999' == $options[ 'text_format_phone' ] ) {
+                if ( '(999) 999-9999 x999' == pods_var( 'text_format_phone', $options ) ) {
                     if ( 2 == count( $numbers ) )
                         $value = implode( '-', $numbers );
                     else
                         $value = '(' . $numbers[ 0 ] . ') ' . $numbers[ 1 ] . '-' . $numbers[ 2 ];
                 }
-                elseif ( '999.999.9999 x999' == $options[ 'text_format_phone' ] )
+                elseif ( '999.999.9999 x999' == pods_var( 'text_format_phone', $options ) )
                     $value = implode( '.', $numbers );
-                else //if ( '999-999-9999 x999' == $options[ 'text_format_phone' ] )
+                else //if ( '999-999-9999 x999' == pods_var( 'text_format_phone', $options ) )
                     $value = implode( '-', $numbers );
 
                 // Add extension
-                if ( 1 == $options[ 'text_enable_phone_extension' ] && false !== $extension )
+                if ( 1 == pods_var( 'text_enable_phone_extension', $options ) && false !== $extension )
                     $value .= ' x' . $extension;
             }
         }
@@ -473,7 +471,7 @@ class PodsField_Text extends PodsField {
      * @since 2.0.0
      */
     public function ui ( $id, &$value, $name = null, $options = null, $fields = null, $pod = null ) {
-        if ( 'website' == $options[ 'text_format_type' ] && 0 < strlen( $options[ 'text_format_website' ] ) )
+        if ( 'website' == pods_var( 'text_format_type', $options ) && 0 < strlen( pods_var( 'text_format_website', $options ) ) )
             $value = make_clickable( $value );
     }
 

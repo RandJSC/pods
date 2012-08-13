@@ -279,10 +279,7 @@ class PodsForm {
         else
             self::field_loader( $type );
 
-        if ( !method_exists( self::$loaded[ $type ], 'options' ) )
-            return apply_filters( 'pods_field_' . $type . '_options', $core_defaults, $type );
-
-        $options = apply_filters( 'pods_field_' . $type . '_options', (array) self::$loaded[ $type ]->options(), $type );
+        $options = apply_filters( 'pods_field_' . $type . '_options', (array) self::$loaded[ $type ]->options(), $type, $core_defaults );
 
         return self::fields_setup( $options, $core_defaults );
     }
@@ -447,14 +444,15 @@ class PodsForm {
      * @param array $fields
      * @param array $pod
      * @param int $id
+     * @param array $traverse
      *
      * @since 2.0.0
      */
-    public static function display ( $type, $value = null, $name = null, $options = null, $pod = null, $id = null ) {
+    public static function display ( $type, $value = null, $name = null, $options = null, $pod = null, $id = null, $traverse = null ) {
         self::field_loader( $type );
 
         if ( method_exists( self::$loaded[ $type ], 'display' ) )
-            $value = self::$loaded[ $type ]->display( $value, $name, $options, $pod, $id );
+            $value = call_user_func_array( array( self::$loaded[ $type ], 'display' ), array( $value, $name, $options, $pod, $id, $traverse ) );
 
         return $value;
     }

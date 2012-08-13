@@ -1,16 +1,7 @@
 <?php
 global $pods_i;
 
-$field_types = array(
-    'date' => 'Date / Time',
-    'number' => 'Number',
-    'boolean' => 'Yes / No',
-    'text' => 'Text',
-    'paragraph' => 'Paragraph Text',
-    'file' => 'File Upload',
-    'slug' => 'Permalink (url-friendly)',
-    'pick' => 'Relationship'
-);
+$field_types = pods_api()->get_field_types();
 
 $advanced_fields = array(
     __( 'Visual', 'pods' ) => array(
@@ -218,6 +209,19 @@ $max_length_name -= strlen( $wpdb->prefix . 'pods_tbl_' );
                 </span>
             </h2>
         </div>
+
+        <?php
+            if ( isset( $_GET[ 'do' ] ) ) {
+                $action = __( 'saved', 'pods' );
+
+                if ( 'create' == pods_var( 'do', 'get', 'save' ) )
+                    $action = __( 'created', 'pods' );
+
+                $message = sprintf( __( '<strong>Success!</strong> %s %s successfully.', 'pods' ), $obj->item, $action );
+
+                echo $obj->message( $message );
+            }
+        ?>
 
         <div id="poststuff">
             <img src="<?php echo PODS_URL; ?>/ui/images/pods-logo-notext-rgb-transparent.png" class="pods-leaf-watermark-right" />
@@ -865,10 +869,13 @@ if ('pod' == pods_var('type', $pod)) {
 <script type="text/javascript">
 <?php
 $pods_field_types = array();
-foreach ($field_settings['field_types'] as $field_type => $field_label) {
-    $pods_field_types[] = "'" . esc_js($field_type) . "' : '" . esc_js($field_label) . "'";
+
+foreach ( $field_settings[ 'field_types' ] as $field_type => $field_label ) {
+    $pods_field_types[] = "'" . esc_js( $field_type ) . "' : '" . esc_js( $field_label ) . "'";
 }
+
 $pods_pick_objects = array();
+
 foreach ($field_settings['pick_object'] as $object => $object_label) {
     if ('-- Select --' == $object_label)
         continue;
@@ -904,4 +911,10 @@ foreach ($field_settings['pick_object'] as $object => $object_label) {
         $( document ).Pods( 'flexible', $( 'tbody.pods-manage-list tr.flexible-row' ) );
         $( document ).Pods( 'confirm' );
     } );
+
+    var pods_admin_submit_callback = function ( id ) {
+        var thank_you = '<?php echo addslashes( pods_var_update( array( 'do' => 'save' ) ) ); ?>';
+
+        document.location = thank_you.replace( 'X_ID_X', id );
+    }
 </script>

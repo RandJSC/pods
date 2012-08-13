@@ -1,11 +1,4 @@
 <?php
-/**
- * Created by JetBrains PhpStorm.
- * User: sclark
- * Date: 8/8/12
- * Time: 2:51 PM
- * To change this template use File | Settings | File Templates.
- */
 class PodsUpgrade_2_0 {
 
     public $tables = array();
@@ -94,7 +87,12 @@ class PodsUpgrade_2_0 {
         if ( !in_array( "{$wpdb->prefix}pod_types", $this->tables ) )
             return pods_error( __( 'Table not found, it cannot be migrated', 'pods' ) );
 
-        $count = @count( (array) pods_query( "SELECT * FROM `@wp_pod_types`", false ) );
+        $count = pods_query( "SELECT COUNT(*) AS `count` FROM `@wp_pod_types`", false );
+
+        if ( !empty( $count ) )
+            $count = (int) $count[ 0 ]->count;
+        else
+            $count = 0;
 
         return $count;
     }
@@ -105,7 +103,12 @@ class PodsUpgrade_2_0 {
         if ( !in_array( "{$wpdb->prefix}pod_fields", $this->tables ) )
             return pods_error( __( 'Table not found, it cannot be migrated', 'pods' ) );
 
-        $count = @count( (array) pods_query( "SELECT * FROM `@wp_pod_fields`", false ) );
+        $count = pods_query( "SELECT COUNT(*) AS `count` FROM `@wp_pod_fields`", false );
+
+        if ( !empty( $count ) )
+            $count = (int) $count[ 0 ]->count;
+        else
+            $count = 0;
 
         return $count;
     }
@@ -116,7 +119,12 @@ class PodsUpgrade_2_0 {
         if ( !in_array( "{$wpdb->prefix}pod_fields", $this->tables ) )
             return pods_error( __( 'Table not found, it cannot be migrated', 'pods' ) );
 
-        $count = @count( (array) pods_query( "SELECT * FROM `@wp_pod_rel`", false ) );
+        $count = pods_query( "SELECT COUNT(*) AS `count` FROM `@wp_pod_rel`", false );
+
+        if ( !empty( $count ) )
+            $count = (int) $count[ 0 ]->count;
+        else
+            $count = 0;
 
         return $count;
     }
@@ -127,7 +135,12 @@ class PodsUpgrade_2_0 {
         if ( !in_array( "{$wpdb->prefix}pod", $this->tables ) )
             return pods_error( __( 'Table not found, it cannot be migrated', 'pods' ) );
 
-        $count = @count( (array) pods_query( "SELECT * FROM `@wp_pod`", false ) );
+        $count = pods_query( "SELECT COUNT(*) AS `count` FROM `@wp_pod`", false );
+
+        if ( !empty( $count ) )
+            $count = (int) $count[ 0 ]->count;
+        else
+            $count = 0;
 
         return $count;
     }
@@ -138,7 +151,12 @@ class PodsUpgrade_2_0 {
         if ( !in_array( "{$wpdb->prefix}pod_templates", $this->tables ) )
             return pods_error( __( 'Table not found, it cannot be migrated', 'pods' ) );
 
-        $count = @count( (array) pods_query( "SELECT * FROM `@wp_pod_templates`", false ) );
+        $count = pods_query( "SELECT COUNT(*) AS `count` FROM `@wp_pod_templates`", false );
+
+        if ( !empty( $count ) )
+            $count = (int) $count[ 0 ]->count;
+        else
+            $count = 0;
 
         return $count;
     }
@@ -149,7 +167,12 @@ class PodsUpgrade_2_0 {
         if ( !in_array( "{$wpdb->prefix}pod_pages", $this->tables ) )
             return pods_error( __( 'Table not found, it cannot be migrated', 'pods' ) );
 
-        $count = @count( (array) pods_query( "SELECT * FROM `@wp_pod_pages`", false ) );
+        $count = pods_query( "SELECT COUNT(*) AS `count` FROM `@wp_pod_pages`", false );
+
+        if ( !empty( $count ) )
+            $count = (int) $count[ 0 ]->count;
+        else
+            $count = 0;
 
         return $count;
     }
@@ -160,7 +183,12 @@ class PodsUpgrade_2_0 {
         if ( !in_array( "{$wpdb->prefix}pod_helpers", $this->tables ) )
             return pods_error( __( 'Table not found, it cannot be migrated', 'pods' ) );
 
-        $count = @count( (array) pods_query( "SELECT * FROM `@wp_pod_helpers`", false ) );
+        $count = pods_query( "SELECT COUNT(*) AS `count` FROM `@wp_pod_helpers`", false );
+
+        if ( !empty( $count ) )
+            $count = (int) $count[ 0 ]->count;
+        else
+            $count = 0;
 
         return $count;
     }
@@ -176,7 +204,47 @@ class PodsUpgrade_2_0 {
         if ( !in_array( "{$wpdb->prefix}pod_tbl_{$pod}", $this->tables ) )
             return pods_error( __( 'Table not found, it cannot be migrated', 'pods' ) );
 
-        $count = @count( (array) pods_query( "SELECT * FROM `@wp_pod_tbl_{$pod}`", false ) );
+        $count = pods_query( "SELECT COUNT(*) AS `count` FROM `@wp_pod_tbl_{$pod}`", false );
+
+        if ( !empty( $count ) )
+            $count = (int) $count[ 0 ]->count;
+        else
+            $count = 0;
+
+        $pod_type = pods_query( "SELECT `id` FROM `@wp_pod_types` WHERE `name` = '{$pod}'", false );
+
+        if ( !empty( $pod_type ) )
+            $pod_type = (int) $pod_type[ 0 ]->id;
+        else
+            return pods_error( __( 'Pod not found, it cannot be migrated', 'pods' ) );
+
+        $fields = array( 'id' );
+
+        $field_rows = pods_query( "SELECT `id`, `name`, `coltype` FROM `@wp_pod_fields` WHERE `datatype` = {$pod_type} ORDER BY `weight`, `name`" );
+
+        if ( !empty( $field_rows ) ) {
+            foreach ( $field_rows as $field ) {
+                if ( !in_array( $field->coltype, array( 'pick', 'file' ) ) )
+                    $fields[] = $field->name;
+            }
+        }
+
+        $columns = PodsData::get_table_columns( "{$wpdb->prefix}pod_tbl_{$pod}" );
+
+        $errors = array();
+
+        foreach ( $columns as $column => $info ) {
+            if ( !in_array( $column, $fields ) )
+                $errors[] = "<strong>{$column}</strong> " . __( 'is not a field in this pod.' );
+        }
+
+        foreach ( $fields as $field ) {
+            if ( !isset( $columns[ $field ] ) )
+                $errors[] = "<strong>{$field}</strong> " . __( 'was not found in the table.' );
+        }
+
+        if ( !empty( $errors ) )
+            return pods_error( implode( ', ', $errors ) );
 
         return $count;
     }
@@ -241,7 +309,7 @@ class PodsUpgrade_2_0 {
 
                 if ( 'txt' == $field_type )
                     $field_type = 'text';
-                elseif ( 'desc' == $field_type )
+                elseif ( 'desc' == $field_type || 'code' == $field_type )
                     $field_type = 'paragraph';
                 elseif ( 'bool' == $field_type )
                     $field_type = 'boolean';
@@ -295,17 +363,22 @@ class PodsUpgrade_2_0 {
                     else {
                         $field_params[ 'pick_format_type' ] = 'single';
                         $field_params[ 'pick_format_single' ] = 'dropdown';
+                        $field_params[ 'pick_limit' ] = 1;
                     }
                 }
                 elseif ( 'number' == $field_type ) {
                     $field_params[ 'number_format_type' ] = 'plain';
                     $field_params[ 'number_decimals' ] = 2;
                 }
+                elseif ( 'desc' == $row->coltype )
+                    $field_params[ 'paragraph_format_type' ] = 'tinymce';
 
                 $fields[] = $field_params;
 
                 $weight++;
             }
+
+            $pod_type->name = pods_sanitize( pods_clean_name( $pod_type->name ) );
 
             $pod_params = array(
                 'name' => $pod_type->name,
@@ -349,10 +422,14 @@ class PodsUpgrade_2_0 {
         $last_id = (int) $this->check_progress( __FUNCTION__ );
 
         $sql = "
-            SELECT *
-            FROM `@wp_pod_rel`
-            WHERE {$last_id} < `id`
-            ORDER BY `id`
+            SELECT `r`.*, `p`.`tbl_row_id` AS `real_id`, `p`.`datatype`
+            FROM `@wp_pod_rel` AS `r`
+            LEFT JOIN `@wp_pod` AS `p` ON `p`.`id` = `r`.`pod_id`
+            WHERE {$last_id} < `r`.`id`
+                AND `r`.`pod_id` IS NOT NULL
+                AND `r`.`field_id` IS NOT NULL
+                AND `p`.`id` IS NOT NULL
+            ORDER BY `r`.`id`
             LIMIT 0, 800
         ";
 
@@ -373,32 +450,27 @@ class PodsUpgrade_2_0 {
                 $pod_fields = pods_query( "SELECT `id`, `name` FROM `@wp_pod_fields` WHERE `datatype` = {$type->id} ORDER BY `id`" );
 
                 foreach ( $pod_fields as $field ) {
-                    $types[ 'old_fields' ][ $field->id ] = $field->name;
+                    $types[ $type->id ][ 'old_fields' ][ $field->id ] = $field->name;
                 }
             }
 
             foreach ( $rel as $r ) {
                 $r->pod_id = (int) $r->pod_id;
 
-                $p = pods_query( "SELECT `tbl_row_id`, `datatype` FROM `@wp_pod` WHERE `id` = {$r->pod_id}");
-
-                if ( empty( $p ) )
+                if ( !isset( $types[ $r->datatype ] ) || !isset( $types[ $r->datatype ][ 'old_fields' ][ $r->field_id ] ) )
                     continue;
 
-                if ( !isset( $types[ $p->datatype ] ) || !isset( $types[ $p->datatype ][ 'old_fields' ][ $r->field_id ] ) )
+                if ( !isset( $types[ $r->datatype ][ 'fields' ][ $types[ $r->datatype ][ 'old_fields' ][ $r->field_id ] ] ) )
                     continue;
 
-                if ( !isset( $types[ $p->datatype ][ 'fields' ][ $types[ $p->datatype ][ 'old_fields' ][ $r->field_id ] ] ) )
-                    continue;
-
-                $field = $types[ $p->datatype ][ 'fields' ][ $types[ $p->datatype ][ 'old_fields' ][ $r->field_id ] ];
+                $field = $types[ $r->datatype ][ 'fields' ][ $types[ $r->datatype ][ 'old_fields' ][ $r->field_id ] ];
 
                 if ( !in_array( $field[ 'type' ], array( 'pick', 'file' ) ) )
                     continue;
 
-                $pod_id = $types[ $p->datatype ][ 'id' ];
+                $pod_id = $types[ $r->datatype ][ 'id' ];
                 $field_id = $field[ 'id' ];
-                $item_id = $p->tbl_row_id;
+                $item_id = $r->real_id;
 
                 $related_pod_id = 0;
                 $related_field_id = 0;
@@ -406,7 +478,23 @@ class PodsUpgrade_2_0 {
 
                 if ( 'pick' == $field[ 'type' ] ) {
                     if ( 0 < (int) $field[ 'sister_field_id' ] ) {
-                        $related_field = $api->load_field( array( 'id' => $field[ 'sister_field_id' ] ) );
+                        $sql = "
+                            SELECT `f`.`id`, `f`.`name`, `t`.`name` AS `pod`
+                            FROM `@wp_pod_fields` AS `f`
+                            LEFT JOIN `@wp_pod_types` AS `t` ON `t`.`id` = `f`.`datatype`
+                            WHERE `f`.`id` = " . (int) $field[ 'sister_field_id' ] . " AND `t`.`id` IS NOT NULL
+                            ORDER BY `f`.`id`
+                            LIMIT 1
+                        ";
+
+                        $old_field = pods_query( $sql );
+
+                        if ( empty( $old_field ) )
+                            continue;
+
+                        $old_field = $old_field[ 0 ];
+
+                        $related_field = $api->load_field( array( 'name' => $old_field->name, 'pod' => $old_field->pod ) );
 
                         if ( empty( $related_field ) )
                             continue;
@@ -423,6 +511,15 @@ class PodsUpgrade_2_0 {
                         $related_pod_id = $related_pod[ 'id' ];
                     }
                 }
+
+                $r->id = (int) $r->id;
+                $pod_id = (int) $pod_id;
+                $field_id = (int) $field_id;
+                $item_id = (int) $item_id;
+                $related_pod_id = (int) $related_pod_id;
+                $related_field_id = (int) $related_field_id;
+                $related_item_id = (int) $related_item_id;
+                $r->weight = (int) $r->weight;
 
                 $sql = "
                     REPLACE INTO `@wp_pods_rel`
@@ -619,13 +716,18 @@ class PodsUpgrade_2_0 {
                 $columns[] = pods_sanitize( $field[ 'name' ] );
         }
 
-        $select = '`t`.`id`, `t`.`' . implode( '`, `t`.`', $columns ) . '`';
-        $columns = '`id`, `' . implode( '`, `', $columns ) . '`';
+        $select = '`t`.`id`';
+        $into = '`id`';
+
+        if ( !empty( $columns ) ) {
+            $select .= ', `t`.`' . implode( '`, `t`.`', $columns ) . '`';
+            $into .= ', `' . implode( '`, `', $columns ) . '`';
+        }
 
         // Copy content from the old table into the new
         $sql = "
             REPLACE INTO `@wp_pods_tbl_{$pod}`
-                ( {$columns} )
+                ( {$into} )
                 ( SELECT {$select}
                   FROM `@wp_pod_tbl_{$pod}` AS `t` )
         ";
@@ -655,6 +757,12 @@ class PodsUpgrade_2_0 {
         pods_query( $sql );
 
         $this->update_progress( __FUNCTION__, true, $pod );
+
+        return '1';
+    }
+
+    function migrate_cleanup () {
+        update_option( 'pods_framework_upgraded_1_x', 1 );
 
         return '1';
     }

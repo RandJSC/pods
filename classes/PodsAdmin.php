@@ -83,7 +83,9 @@ class PodsAdmin {
 
                 wp_enqueue_script( 'pods' );
 
-                if ( false !== strpos( $page, 'pods-manage-' ) && 0 === strpos( $page, 'pods-manage-' ) ) {
+                if ( ( false !== strpos( $page, 'pods-manage-' ) && 0 === strpos( $page, 'pods-manage-' ) ) || ( false !== strpos( $page, 'pods-add-new-' ) && 0 === strpos( $page, 'pods-add-new-' ) ) ) {
+                    wp_enqueue_script( 'post' );
+                    /*
                     wp_enqueue_style( 'pods-manage' );
 
                     // Just for demo
@@ -118,7 +120,7 @@ class PodsAdmin {
 
                     // Select2
                     wp_enqueue_script('jquery-select2');
-                    wp_enqueue_style('jquery-select2');
+                    wp_enqueue_style('jquery-select2');*/
                 }
                 else
                     wp_enqueue_style( 'pods-admin' );
@@ -134,7 +136,7 @@ class PodsAdmin {
                     wp_register_script( 'pods-advanced', PODS_URL . 'ui/js/advanced.js', array(), PODS_VERSION );
                     wp_enqueue_script( 'pods-advanced' );
                 }
-                elseif ( 'pods-wizard' == $page || 'pods-upgrade' == $page || ( 'pods' == $page && 'add' == pods_var( 'action', 'get', 'manage' ) ) ) {
+                elseif ( 'pods-wizard' == $page || 'pods-upgrade' == $page || ( 'pods' == $page && in_array( pods_var( 'action', 'get', 'manage' ), array( 'add', 'manage' ) ) ) ) {
                     wp_enqueue_style( 'pods-wizard' );
 
                     if ( 'pods-upgrade' == $page )
@@ -151,22 +153,34 @@ class PodsAdmin {
             'type' => 'pod'
         ) );
 
-        if ( !defined( 'PODS_DEVELOPER' ) || !PODS_DEVELOPER )
-            $results = false; // not yet!
+        $old_pods = get_option( 'pods_version' );
+        $upgraded = get_option( 'pods_framework_upgraded_1_x' );
 
-        if ( false !== $results ) {
+        if ( ( empty( $old_pods ) || 1 == $upgraded ) && false !== $results ) {
             foreach ( (array) $results as $item ) {
                 if ( !is_super_admin() && !current_user_can( 'pods_new_' . $item[ 'name' ] ) && !current_user_can( 'pods_edit_' . $item[ 'name' ] ) && !current_user_can( 'pods_delete_' . $item[ 'name' ] ) )
                     continue;
 
-                $item[ 'options' ][ 'label' ] = ( !empty( $item[ 'options' ][ 'label' ] ) ) ? $item[ 'options' ][ 'label' ] : ucwords( str_replace( '_', ' ', $item[ 'name' ] ) );
-                $item[ 'options' ][ 'label' ] = apply_filters( 'pods_admin_menu_label', $item[ 'options' ][ 'label' ], $item );
+                $label = pods_var( 'menu_name', $item[ 'options' ], pods_var( 'label', $item[ 'options' ], ucwords( str_replace( '_', ' ', $item[ 'name' ] ) ), null, true ), null, true );
+                $label = apply_filters( 'pods_admin_menu_label', $label, $item );
+
+                $singular_label = pods_var( 'label_singular', $item[ 'options' ], pods_var( 'label', $item[ 'options' ], ucwords( str_replace( '_', ' ', $item[ 'name' ] ) ), null, true), null, true );
+                $plural_label = pods_var( 'label', $item[ 'options' ], ucwords( str_replace( '_', ' ', $item[ 'name' ] ) ), null, true );
 
                 if ( 1 == $item[ 'options' ][ 'show_in_menu' ] ) {
-                    add_object_page( $item[ 'options' ][ 'label' ], $item[ 'options' ][ 'label' ], 'read', "pods-manage-{$item['name']}" );
+                    add_object_page( $label, $label, 'read', "pods-manage-{$item['name']}" );
 
                     if ( is_super_admin() || current_user_can( 'pods_edit_' . $item[ 'name' ] ) || current_user_can( 'pods_delete_' . $item[ 'name' ] ) ) {
-                        add_submenu_page( "pods-manage-{$item['name']}", 'Edit', 'Edit', 'read', "pods-manage-{$item['name']}", array(
+                        $all_label = $plural_label;
+
+                        if ( "pods-manage-{$item['name']}" == pods_var( 'page', 'get' ) ) {
+                            if ( 'edit' == pods_var( 'action', 'get', 'manage' ) )
+                                $all_label = __( 'Edit', 'pods' ) . ' ' . $singular_label;
+                            elseif ( 'add' == pods_var( 'action', 'get', 'manage' ) )
+                                $all_label = __( 'Add New', 'pods' ) . ' ' . $singular_label;
+                        }
+
+                        add_submenu_page( "pods-manage-{$item['name']}", $all_label, __( 'All', 'pods' ), 'read', "pods-manage-{$item['name']}", array(
                             $this,
                             'admin_content'
                         ) );
@@ -178,15 +192,25 @@ class PodsAdmin {
                         if ( !is_super_admin() && !current_user_can( 'pods_edit_' . $item[ 'name' ] ) && !current_user_can( 'pods_delete_' . $item[ 'name' ] ) )
                             $page = "pods-manage-{$item['name']}";
 
-                        add_submenu_page( "pods-manage-{$item['name']}", 'Add New', 'Add New', 'read', $page, array(
+                        $add_label = __( 'Add New', 'pods' ) . ' ' . $singular_label;
+
+                        if ( $page == pods_var( 'page', 'get' ) ) {
+                            if ( 'edit' == pods_var( 'action', 'get', 'add' ) )
+                                $add_label = __( 'Edit', 'pods' ) . ' ' . $singular_label;
+                            elseif ( 'manage' == pods_var( 'action', 'get', 'add' ) )
+                                $add_label = $plural_label;
+                        }
+
+                        add_submenu_page( "pods-manage-{$item['name']}", $add_label, __( 'Add New', 'pods' ), 'read', $page, array(
                             $this,
                             'admin_content'
                         ) );
                     }
                 }
                 elseif ( !current_user_can( 'pods_edit_' . $item[ 'name' ] ) && !current_user_can( 'pods_delete_' . $item[ 'name' ] ) )
-                    $submenu[ ] = $item;
+                    $submenu[] = $item;
             }
+
             if ( !empty( $submenu ) ) {
                 $parent = false;
 
@@ -199,7 +223,22 @@ class PodsAdmin {
                         add_object_page( 'Pods', 'Pods', 'read', $parent, null, PODS_URL . '/ui/images/icon16.png' );
                     }
 
-                    add_submenu_page( $parent, "Manage {$item['options']['label']}", "Manage {$item['options']['label']}", 'read', $page, array(
+                    $label = pods_var( 'menu_name', $item[ 'options' ], pods_var( 'label', $item[ 'options' ], ucwords( str_replace( '_', ' ', $item[ 'name' ] ) ), null, true ), null, true );
+                    $label = apply_filters( 'pods_admin_menu_label', $label, $item );
+
+                    $singular_label = pods_var( 'label_singular', $item[ 'options' ], pods_var( 'label', $item[ 'options' ], ucwords( str_replace( '_', ' ', $item[ 'name' ] ) ), null, true ), null, true );
+                    $plural_label = pods_var( 'label', $item[ 'options' ], ucwords( str_replace( '_', ' ', $item[ 'name' ] ) ), null, true );
+
+                    $all_label = $plural_label;
+
+                    if ( $page == pods_var( 'page', 'get' ) ) {
+                        if ( 'edit' == pods_var( 'action', 'get', 'manage' ) )
+                            $all_label = __( 'Edit', 'pods' ) . ' ' . $singular_label;
+                        elseif ( 'add' == pods_var( 'action', 'get', 'manage' ) )
+                            $all_label = __( 'Add New', 'pods' ) . ' ' . $singular_label;
+                    }
+
+                    add_submenu_page( $parent, $all_label, "Manage {$label}", 'read', $page, array(
                         $this,
                         'admin_content'
                     ) );
@@ -255,16 +294,22 @@ class PodsAdmin {
                     'function' => array( $this, 'admin_components' ),
                     'access' => 'pods_components'
                 ),
-                'pods-upgrade' => array(
-                    'label' => 'Preview: Upgrade',
-                    'function' => array( $this, 'admin_temp_upgrade' )
-                ),
                 'pods-help' => array(
                     'label' => 'Help',
                     'function' => array( $this, 'admin_help' )
                 )
             );
         }
+
+        if ( !empty( $old_pods ) && 1 != $upgraded ) {
+            $admin_menus = array(
+                'pods-upgrade' => array(
+                    'label' => 'Upgrade',
+                    'function' => array( $this, 'admin_upgrade' )
+                )
+            );
+        }
+
         $admin_menus = apply_filters( 'pods_admin_menu', $admin_menus );
 
         $parent = false;
@@ -293,7 +338,12 @@ class PodsAdmin {
             if ( false === $parent ) {
                 $parent = $page;
 
-                add_menu_page( 'Pods Admin', 'Pods Admin', 'read', $parent, null, PODS_URL . '/ui/images/icon16.png' );
+                $menu = __( 'Pods Admin', 'pods' );
+
+                if ( 'pods-upgrade' == $parent )
+                    $menu = __( 'Pods Upgrade', 'pods' );
+
+                add_menu_page( $menu, $menu, 'read', $parent, null, PODS_URL . '/ui/images/icon16.png' );
             }
 
             add_submenu_page( $parent, $menu_item[ 'label' ], $menu_item[ 'label' ], 'read', $page, $menu_item[ 'function' ] );
@@ -304,29 +354,53 @@ class PodsAdmin {
     }
 
     public function admin_content () {
-        $pod = str_replace( 'pods-manage-', '', $_GET[ 'page' ] );
+        $pod = str_replace( array( 'pods-manage-', 'pods-add-new-' ), '', $_GET[ 'page' ] );
+        $default = 'manage';
 
-        $actions_disabled = array();
+        if ( false !== strpos( $_GET[ 'page' ], 'pods-add-new-' ) )
+            $default = 'add';
 
-        if ( !current_user_can( 'pods_add_' . $pod ) )
-            $actions_disabled[] = 'add';
+        $actions_disabled = array( 'duplicate', 'view', 'export' );
 
-        if ( !current_user_can( 'pods_edit_' . $pod ) )
-            $actions_disabled[] = 'edit';
+        if ( !is_super_admin() ) {
+            if ( !current_user_can( 'pods_add_' . $pod ) ) {
+                $actions_disabled[] = 'add';
+                $default = 'manage';
+            }
 
-        if ( !current_user_can( 'pods_delete_' . $pod ) )
-            $actions_disabled[] = 'delete';
+            if ( !is_super_admin() && !current_user_can( 'pods_edit_' . $pod ) )
+                $actions_disabled[] = 'edit';
 
-        if ( in_array( 'edit', $actions_disabled ) && in_array( 'delete', $actions_disabled ) )
-            $_GET[ 'action' ] = 'add';
+            if ( !is_super_admin() && !current_user_can( 'pods_delete_' . $pod ) )
+                $actions_disabled[] = 'delete';
+        }
 
-        pods_ui( array(
+        $_GET[ 'action' ] = pods_var( 'action', 'get', $default );
+
+        $pod = pods( $pod, pods_var( 'id', 'get', null, null, true ) );
+
+        $ui = array(
             'pod' => $pod,
-            'actions_custom' => array(
-                'form' => array( $this, 'admin_content_form' )
+            'fields' => array(
+                'manage' => array(
+                    $pod->pod_data[ 'field_index' ] => __( 'Name', 'pods' )
+                ),
+                'add' => $pod->pod_data[ 'fields' ],
+                'edit' => $pod->pod_data[ 'fields' ],
+                'duplicate' => $pod->pod_data[ 'fields' ]
             ),
-            'actoins_disabled' => $actions_disabled
-        ) );
+            'item' => pods_var( 'label_singular', $pod->pod_data[ 'options' ], pods_var( 'label_singular', $pod->pod_data[ 'options' ], ucwords( str_replace( '_', ' ', $pod->pod ) ), null, true ), null, true ),
+            'items' => pods_var( 'label', $pod->pod_data[ 'options' ], ucwords( str_replace( '_', ' ', $pod->pod ) ), null, true ),
+            'orderby' => 'id',
+            'orderby_dir' => 'desc',
+            'actions_disabled' => $actions_disabled
+        );
+
+        // @todo Customize the Add New / Manage links to point to their correct menu items
+
+        $ui = apply_filters( 'pods_admin_ui_' . $pod->pod, apply_filters( 'pods_admin_ui', $ui, $pod->pod ), $pod );
+
+        pods_ui( $ui );
     }
 
     public function media_button ( $context ) {
@@ -499,7 +573,7 @@ class PodsAdmin {
         $ui->manage();
     }
 
-    public function admin_temp_upgrade () {
+    public function admin_upgrade () {
         require_once PODS_DIR . 'ui/admin/upgrade.php';
     }
 
@@ -584,7 +658,8 @@ class PodsAdmin {
             'replace_package' => array( 'priv' => 'manage_packages' ),
             'security_settings' => array( 'priv' => 'manage_settings' ),
             'select2_ajax' => array('priv' => 'manage_pds', 'format' => 'json'),
-            'upgrade' => array( 'priv' => 'manage_pods' )
+            'upgrade' => array( 'priv' => 'manage_pods' ),
+            'process_form' => array( 'custom_nonce' => true )
         );
 
         $methods = apply_filters( 'pods_admin_ajax_methods', $methods, $this );
@@ -592,37 +667,40 @@ class PodsAdmin {
         if ( !isset( $params->method ) || !isset( $methods[ $params->method ] ) )
             pods_error( 'Invalid AJAX request', $this );
 
-        if ( !isset( $params->_wpnonce ) || false === wp_verify_nonce( $params->_wpnonce, 'pods-' . $params->method ) )
-            pods_error( 'Unauthorized request', $this );
-
         $defaults = array(
             'priv' => null,
             'format' => null,
             'safe' => null,
             'access_pod_specific' => null,
-            'name' => $params->method
+            'name' => $params->method,
+            'custom_nonce' => null
         );
 
         $method = (object) array_merge( $defaults, (array) $methods[ $params->method ] );
 
+        if ( true !== $method->custom_nonce && ( !isset( $params->_wpnonce ) || false === wp_verify_nonce( $params->_wpnonce, 'pods-' . $params->method ) ) )
+            pods_error( __( 'Unauthorized request', 'pods' ), $this );
+
         // Cleaning up $params
         unset( $params->action );
         unset( $params->method );
-        unset( $params->_wpnonce );
+
+        if ( true !== $method->custom_nonce )
+            unset( $params->_wpnonce );
 
         if ( true === $method->access_pod_specific ) {
             $priv_val = false;
             if ( isset( $params->pod ) )
                 $priv_val = 'pod_' . $params->pod;
             if ( false === $priv_val || ( !pods_access( $priv_val ) && !pods_access( 'manage_content' ) ) )
-                pods_error( 'Access denied', $this );
+                pods_error( __( 'Access denied', 'pods' ), $this );
         }
 
         // Check permissions (convert to array to support multiple)
         if ( !empty( $method->priv ) ) {
             foreach ( (array) $method->priv as $priv_val ) {
                 if ( !pods_access( $priv_val ) )
-                    pods_error( 'Access denied', $this );
+                    pods_error( __( 'Access denied', 'pods' ), $this );
             }
         }
 
@@ -661,13 +739,17 @@ class PodsAdmin {
         elseif ( 'save_pod' == $method->name ) {
             if ( isset( $params->field_data ) && !is_array( $params->field_data ) ) {
                 $params->field_data = stripslashes( $params->field_data );
-                $params->field_data = (array) @json_decode( $params->field_data, true );
+                $params->fields = (array) @json_decode( $params->field_data, true );
+
+                unset( $params->field_data );
             }
         }
 
         $params = apply_filters( 'pods_api_' . $method->name, $params, $method );
 
-        if ( 'upgrade' == $method->name ) {
+        if ( 'process_form' == $method->name )
+            $output = $this->api->process_form( $params );
+        elseif ( 'upgrade' == $method->name ) {
             require_once( PODS_DIR . 'sql/PodsUpgrade.php' );
 
             $upgrade = new PodsUpgrade_2_0();
@@ -767,7 +849,7 @@ class PodsAdmin {
             $upload_disabled = true;
 
         if ( true === $upload_disabled || !isset( $params->_wpnonce ) || false === wp_verify_nonce( $params->_wpnonce, 'pods-' . $params->method . '-' . $params->id ) )
-            pods_error( 'Unauthorized request', $this );
+            pods_error( __( 'Unauthorized request', 'pods' ), $this );
 
         $method = $params->method;
 

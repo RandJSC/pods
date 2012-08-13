@@ -1,5 +1,5 @@
 (function ( $ ) {
-    var changed = false;
+    var pods_changed = false;
     var methods = {
         validate : function () {
             var $form = $( 'form.pods-submittable' );
@@ -41,7 +41,7 @@
             $( 'form.pods-submittable' ).on( 'submit', function ( e ) {
                 var $submittable = $( this );
 
-                changed = false;
+                pods_changed = false;
 
                 e.preventDefault();
 
@@ -55,6 +55,9 @@
                 field_data = {};
 
                 var valid_form = true;
+
+                var field_id = 0,
+                    field_index = 0;
 
                 $submittable.find( '.pods-submittable-fields' ).find( 'input, select, textarea' ).each( function () {
                     var $el = $( this );
@@ -85,20 +88,43 @@
                         field_name = $el.prop( 'name' );
 
                         if ( 0 == field_name.indexOf( 'field_data' ) ) {
-                            var field_array = field_name.match( /\[(\w*)\]/gi ),
-                                field_id = 0;
+                            var field_array = field_name.match( /\[(\w*|)\]/gi ),
+                                field_name = '';
 
                             for ( var i in field_array ) {
                                 the_field = field_array[ i ].replace( '[', '' ).replace( ']', '' );
 
                                 if ( 0 == i ) {
-                                    field_id = the_field;
+                                    if ( field_index != the_field )
+                                        field_id++;
+
+                                    field_index = the_field;
 
                                     if ( 'undefined' == typeof field_data[ field_id ] )
                                         field_data[ field_id ] = {};
                                 }
-                                else
-                                    field_data[ field_id ][ the_field ] = val;
+                                else if ( 1 == i ) {
+                                    field_name = the_field;
+
+                                    if ( 2 == field_array.length )
+                                        field_data[ field_id ][ field_name ] = val;
+                                }
+                                else if ( 2 == i ) {
+                                    the_field = parseInt( the_field );
+
+                                    if ( 'NaN' == the_field )
+                                        field_data[ field_id ][ field_name ] = val;
+                                    else {
+                                        if ( 'undefined' == typeof field_data[ field_id ][ field_name ] )
+                                            field_data[ field_id ][ field_name ] = {};
+
+                                        while ( 'undefined' != typeof( field_data[ field_id ][ field_name ][ the_field ] ) ) {
+                                            the_field++;
+                                        }
+
+                                        field_data[ field_id ][ field_name ][ the_field ] = val;
+                                    }
+                                }
                             }
                         }
                         else
@@ -111,108 +137,122 @@
 
                 pods_ajaxurl = pods_ajaxurl + '&action=' + postdata.action;
 
-                // $_POST doesn't like a LOT of items
-                if ( {} != field_data )
+                // $_POST doesn't like a LOT of items, JSON encode it as one string
+                if ( !$.isEmptyObject( field_data ) )
                     postdata[ 'field_data' ] = $.toJSON( field_data );
+
+                $submitbutton = $submittable.find( 'input[type=submit], button[type=submit]' );
 
                 $.ajax( {
                     type : 'POST',
+                    dataType : 'html',
                     url : pods_ajaxurl,
                     cache : false,
                     data : postdata,
                     success : function ( d ) {
                         if ( -1 == d.indexOf( '<e>' ) && -1 != d ) {
                             if ( 'undefined' != typeof pods_admin_submit_callback )
-                                pods_admin_submit_callback( d );
+                                pods_admin_submit_callback( parseInt( d ) );
                             else if ( 'undefined' != typeof $submittable.data( 'location' ) )
-                                document.location.href = $submittable.data( 'location' );
+                                document.location.href = $submittable.data( 'location' ).replace( 'X_ID_X', parseInt( d ) );
                             else
                                 document.location.reload( true );
                         }
-                        else if ( 'undefined' != typeof pods_admin_submit_error_callback )
-                            pods_admin_submit_error_callback( d.replace( '<e>', '' ).replace( '</e>', '' ) );
                         else if ( 'undefined' != typeof $submittable.data( 'error-location' ) )
                             document.location.href = $submittable.data( 'error-location' );
                         else {
-                            alert( 'Error: ' + d.replace( '<e>', '' ).replace( '</e>', '' ) );
-                            console.log( d.replace( '<e>', '' ).replace( '</e>', '' ) );
+                            var err_msg = d.replace( '<e>', '' ).replace( '</e>', '' );
+                            if ( 'undefined' != typeof pods_admin_submit_error_callback )
+                                pods_admin_submit_error_callback( err_msg );
 
-                            $submittable.css( 'cursor', 'pointer' );
-                            $submittable.prop( 'disabled', false );
-                            $submittable.parent().find( '.waiting' ).fadeOut();
+                            $submitbutton.css( 'cursor', 'pointer' );
+                            $submitbutton.prop( 'disabled', false );
+                            $submitbutton.parent().find( '.waiting' ).fadeOut();
+
+                            alert( 'Error: ' + err_msg );
+                            console.log( err_msg );
                         }
                     },
                     error : function () {
-                        $submittable.css( 'cursor', 'pointer' );
-                        $submittable.prop( 'disabled', false );
-                        $submittable.parent().find( '.waiting' ).fadeOut();
+                        $submitbutton.css( 'cursor', 'pointer' );
+                        $submitbutton.prop( 'disabled', false );
+                        $submitbutton.parent().find( '.waiting' ).fadeOut();
 
                         alert( 'Unable to process request, please try again.' );
-                    },
-                    dataType : 'html'
+                    }
                 } );
 
             } );
 
             // Handle submit via link and translate to AJAX
             $( 'form.pods-submittable a.pods-submit' ).on( 'click', function ( e ) {
+                var $submitbutton = $( this );
+
                 e.preventDefault();
 
-                var $el = $( this );
-
-                pods_ajaxurl = $el.data( 'ajaxurl' );
+                pods_ajaxurl = $submitbutton.data( 'ajaxurl' );
 
                 if ( 'undefined' != typeof pods_ajaxurl )
                     pods_ajaxurl = pods_ajaxurl.replace( /\?nojs\=1/, '?pods_ajax=1' );
                 else if ( 'undefined' != typeof ajaxurl && ('undefined' == typeof pods_ajaxurl || '' == pods_ajaxurl || '?pods_ajax=1' == pods_ajaxurl || document.location.href == pods_ajaxurl || document.location.href.replace( /\?nojs\=1/, '?pods_ajax=1' ) == pods_ajaxurl) )
                     pods_ajaxurl = ajaxurl + '?pods_ajax=1';
 
-                var postdata = $el.data();
+                var postdata = $submitbutton.data();
 
-                if ( 'undefined' != typeof $el.data( 'confirm' ) && !confirm( $el.data( 'confirm' ) ) )
+                if ( 'undefined' != typeof $submitbutton.data( 'confirm' ) && !confirm( $submitbutton.data( 'confirm' ) ) )
                     return false;
 
-                changed = false;
+                pods_changed = false;
 
                 pods_ajaxurl = pods_ajaxurl + '&action=' + postdata.action;
 
                 $.ajax( {
                     type : 'POST',
+                    dataType : 'html',
                     url : pods_ajaxurl,
                     cache : false,
                     data : postdata,
                     success : function ( d ) {
                         if ( -1 == d.indexOf( '<e>' ) && -1 != d ) {
                             if ( 'undefined' != typeof pods_admin_submit_callback )
-                                pods_admin_submit_callback( d );
-                            else if ( 'undefined' != typeof $el.data( 'location' ) )
-                                document.location.href = $el.data( 'location' );
+                                pods_admin_submit_callback( parseInt( d ) );
+                            else if ( 'undefined' != typeof $submitbutton.data( 'location' ) )
+                                document.location.href = $submitbutton.data( 'location' ).replace( 'X_ID_X', parseInt( d ) );
                             else
                                 document.location.reload( true );
                         }
-                        else if ( 'undefined' != typeof pods_admin_submit_error_callback )
-                            pods_admin_submit_error_callback( d.replace( '<e>', '' ).replace( '</e>', '' ) );
-                        else if ( 'undefined' != typeof $el.data( 'error-location' ) )
-                            document.location.href = $el.data( 'error-location' );
+                        else if ( 'undefined' != typeof $submitbutton.data( 'error-location' ) )
+                            document.location.href = $submitbutton.data( 'error-location' );
                         else {
-                            alert( 'Error: ' + d.replace( '<e>', '' ).replace( '</e>', '' ) );
-                            console.log( d.replace( '<e>', '' ).replace( '</e>', '' ) );
+                            var err_msg = d.replace( '<e>', '' ).replace( '</e>', '' );
+                            if ( 'undefined' != typeof pods_admin_submit_error_callback )
+                                pods_admin_submit_error_callback( err_msg );
+
+                            $submitbutton.css( 'cursor', 'pointer' );
+                            $submitbutton.prop( 'disabled', false );
+                            $submitbutton.parent().find( '.waiting' ).fadeOut();
+
+                            alert( 'Error: ' + err_msg );
+                            console.log( err_msg );
                         }
                     },
                     error : function () {
+                        $submitbutton.css( 'cursor', 'pointer' );
+                        $submitbutton.prop( 'disabled', false );
+                        $submitbutton.parent().find( '.waiting' ).fadeOut();
+
                         alert( 'Unable to process request, please try again.' );
-                    },
-                    dataType : 'html'
+                    }
                 } );
             } );
 
             // Handle submit button and show waiting image
             $( 'form.pods-submittable' ).on( 'click', 'input[type=submit], button[type=submit]', function ( e ) {
-                changed = false;
+                pods_changed = false;
 
                 e.preventDefault();
 
-                $submitbutton = $( this );
+                var $submitbutton = $( this );
                 $submitbutton.css( 'cursor', 'default' );
                 $submitbutton.prop( 'disabled', true );
                 $submitbutton.parent().find( '.waiting' ).fadeIn();
@@ -412,8 +452,10 @@
                             return check;
                     }
                     else if ( $( '#pods-wizard-box' ).closest( 'form' )[ 0 ] ) {
-                        $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'processing' ) );
+                        $( '#pods-wizard-next' ).css( 'cursor', 'pointer' );
                         $( '#pods-wizard-next' ).attr( 'disabled', true );
+                        $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'processing' ) );
+
                         $( '#pods-wizard-box' ).closest( 'form' ).submit();
                     }
                     else {
@@ -485,8 +527,14 @@
                 e.preventDefault();
 
                 $( '.pods-wizard-option-content' ).hide();
+
                 var target = $( this ).attr( 'href' );
+
                 $( target ).show();
+
+                if ( 'undefined' != typeof pods_admin_option_select_callback )
+                    pods_admin_option_select_callback( $( this ) );
+
                 methods.stepForward();
             } );
 
@@ -953,10 +1001,10 @@
         },
         exit_confirm : function () {
             $( 'form.pods-submittable .pods-submittable-fields' ).on( 'change', 'input:not(:button,:submit),textarea,select', function () {
-                changed = true;
+                pods_changed = true;
 
                 window.onbeforeunload = function () {
-                    if ( changed )
+                    if ( pods_changed )
                         return 'Navigating away from this page will discard any changes you have made.';
                 }
             } );

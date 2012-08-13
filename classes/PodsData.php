@@ -98,82 +98,23 @@ class PodsData {
             if ( isset( $this->pod_data[ 'options' ][ 'detail_page' ] ) )
                 $this->detail_page = $this->pod_data[ 'options' ][ 'detail_page' ];
 
-            if ( 'pod' == $this->pod_data[ 'type' ] ) {
-                $this->table = $wpdb->prefix . self::$prefix . 'tbl_' . $this->pod;
-                $this->field_id = 'id';
-                $this->field_name = 'name';
+            if ( isset( $this->pod_data[ 'table' ] ) )
+                $this->table = $this->pod_data[ 'table' ];
 
-                $this->orderby = '`t`.`name`, `t`.`id` DESC';
-            }
-            elseif ( 'post_type' == $this->pod_data[ 'type' ] || 'media' == $this->pod_data[ 'type' ] ) {
-                $this->table = $wpdb->posts;
-                $this->field_id = 'ID';
-                $this->field_name = 'post_title';
+            if ( isset( $this->pod_data[ 'join' ] ) )
+                $this->join = $this->pod_data[ 'join' ];
 
-                $object = $this->pod;
+            if ( isset( $this->pod_data[ 'field_id' ] ) )
+                $this->field_id = $this->pod_data[ 'field_id' ];
 
-                if ( !empty( $this->pod_data[ 'object' ] ) )
-                    $object = $this->pod_data[ 'object' ];
+            if ( isset( $this->pod_data[ 'field_index' ] ) )
+                $this->field_index = $this->pod_data[ 'field_index' ];
 
-                $this->where = array(
-                    'post_status' => '`t`.`post_status` = "publish"',
-                    'post_type' => '`t`.`post_type` = "' . $object . '"'
-                );
+            if ( isset( $this->pod_data[ 'where' ] ) )
+                $this->where = $this->pod_data[ 'where' ];
 
-                $this->orderby = '`t`.`menu_order`, `t`.`post_title`, `t`.`post_date` DESC';
-            }
-            if ( 'taxonomy' == $this->pod_data[ 'type' ] ) {
-                $this->table = $wpdb->terms;
-                $this->join = "LEFT JOIN `{$wpdb->taxonomy}` AS `tx` ON `tx`.`term_id` = `t`.`term_id`";
-                $this->field_id = 'term_id';
-                $this->field_name = 'name';
-
-                $object = $this->pod;
-
-                if ( !empty( $this->pod_data[ 'object' ] ) )
-                    $object = $this->pod_data[ 'object' ];
-
-                $this->where = array(
-                    'tx.taxonomy' => '`tx`.`taxonomy` = "' . $object . '"'
-                );
-
-                $this->orderby = '`t`.`name`';
-            }
-            elseif ( 'user' == $this->pod_data[ 'type' ] ) {
-                $this->table = $wpdb->users;
-                $this->field_id = 'ID';
-                $this->field_name = 'display_name';
-
-                $this->where = array(
-                    'user_status' => '`t`.`user_status` = 0'
-                );
-
-                $this->orderby = '`t`.`display_name`, `t`.`ID` DESC';
-            }
-            elseif ( 'comment' == $this->pod_data[ 'type' ] ) {
-                $this->table = $wpdb->comments;
-                $this->field_id = 'comment_ID';
-                $this->field_name = 'comment_date';
-
-                $object = 'comment';
-
-                if ( !empty( $this->pod_data[ 'object' ] ) )
-                    $object = $this->pod_data[ 'object' ];
-
-                $this->where = array(
-                    'comment_approved' => '`t`.`comment_approved` = 1',
-                    'comment_type' => '`t`.`comment_type` = "' . $object . '"'
-                );
-
-                $this->orderby = '`t`.`comment_date` DESC, `t`.`comment_ID` DESC';
-            }
-            elseif ( 'table' == $this->pod_data[ 'type' ] ) {
-                $this->table = $this->pod;
-                $this->field_id = 'id';
-                $this->field_name = 'name';
-
-                $this->orderby = '`t`.`name`, `t`.`id` DESC';
-            }
+            if ( isset( $this->pod_data[ 'orderby' ] ) )
+                $this->orderby = $this->pod_data[ 'orderby' ];
 
             if ( null !== $id && !is_array( $id ) && !is_object( $id ) ) {
                 $this->id = pods_absint( $id );
@@ -850,19 +791,26 @@ class PodsData {
      * @param string $table
      * @param string $fields
      * @param boolean $if_not_exists
+     *
      * @since 2.0.0
      */
-    public static function table_create ($table, $fields, $if_not_exists = false) {
+    public static function table_create ( $table, $fields, $if_not_exists = false ) {
         global $wpdb;
+
         $sql = "CREATE TABLE";
-        if (true === $if_not_exists)
+
+        if ( true === $if_not_exists )
             $sql .= " IF NOT EXISTS";
+
         $sql .= " `{$wpdb->prefix}" . self::$prefix . "{$table}` ({$fields})";
-        if (!empty($wpdb->charset))
+
+        if ( !empty( $wpdb->charset ) )
             $sql .= " DEFAULT CHARACTER SET {$wpdb->charset}";
-        if (!empty($wpdb->collate))
+
+        if ( !empty( $wpdb->collate ) )
             $sql .= " COLLATE {$wpdb->collate}";
-        return self::query($sql);
+
+        return self::query( $sql );
     }
 
     /**
@@ -870,36 +818,45 @@ class PodsData {
      *
      * @param string $table
      * @param string $changes
+     *
      * @since 2.0.0
      */
-    public static function table_alter ($table, $changes) {
+    public static function table_alter ( $table, $changes ) {
         global $wpdb;
+
         $sql = "ALTER TABLE `{$wpdb->prefix}" . self::$prefix . "{$table}` {$changes}";
-        return self::query($sql);
+
+        return self::query( $sql );
     }
 
     /**
      * Truncate a Table
      *
      * @param string $table
+     *
      * @since 2.0.0
      */
-    public static function table_truncate ($table) {
+    public static function table_truncate ( $table ) {
         global $wpdb;
+
         $sql = "TRUNCATE TABLE `{$wpdb->prefix}" . self::$prefix . "{$table}`";
-        return self::query($sql);
+
+        return self::query( $sql );
     }
 
     /**
      * Drop a Table
      *
      * @param string $table
+     *
      * @since 2.0.0
      */
-    public static function table_drop ($table) {
+    public static function table_drop ( $table ) {
         global $wpdb;
+
         $sql = "DROP TABLE `{$wpdb->prefix}" . self::$prefix . "{$table}`";
-        return self::query($sql);
+
+        return self::query( $sql );
     }
 
     /**
@@ -1030,69 +987,71 @@ class PodsData {
     public static function query ($sql, $error = 'Database Error', $results_error = null, $no_results_error = null) {
         global $wpdb;
 
-        if ($wpdb->show_errors)
+        if ( $wpdb->show_errors )
             self::$display_errors = true;
 
         $display_errors = self::$display_errors;
 
-        if (is_object($error)) {
-            if (isset($error->display_errors) && false === $error->display_errors)
+        if ( is_object( $error ) ) {
+            if ( isset( $error->display_errors ) && false === $error->display_errors )
                 $display_errors = false;
 
             $error = 'Database Error';
         }
-        elseif (is_bool($error)) {
+        elseif ( is_bool( $error ) ) {
             $display_errors = $error;
 
-            if (false !== $error)
+            if ( false !== $error )
                 $error = 'Database Error';
         }
 
-        $params = (object) array('sql' => $sql,
-                                 'error' => $error,
-                                 'results_error' => $results_error,
-                                 'no_results_error' => $no_results_error,
-                                 'display_errors' => $display_errors);
+        $params = (object) array(
+            'sql' => $sql,
+            'error' => $error,
+            'results_error' => $results_error,
+            'no_results_error' => $no_results_error,
+            'display_errors' => $display_errors
+        );
 
         // Handle Preparations of Values (sprintf format)
-        if (is_array($sql)) {
-            if (isset($sql[0]) && 1 < count($sql)) {
-                if (2 == count($sql)) {
-                    if (!is_array($sql[1]))
-                        $sql[1] = array($sql[1]);
+        if ( is_array( $sql ) ) {
+            if ( isset( $sql[ 0 ] ) && 1 < count( $sql ) ) {
+                if ( 2 == count( $sql ) ) {
+                    if ( !is_array( $sql[ 1 ] ) )
+                        $sql[ 1 ] = array( $sql[ 1 ] );
 
-                    $params->sql = self::prepare($sql[0], $sql[1]);
+                    $params->sql = self::prepare( $sql[ 0 ], $sql[ 1 ] );
                 }
-                elseif (3 == count($sql))
-                    $params->sql = self::prepare($sql[0], array($sql[1], $sql[2]));
+                elseif ( 3 == count( $sql ) )
+                    $params->sql = self::prepare( $sql[ 0 ], array( $sql[ 1 ], $sql[ 2 ] ) );
                 else
-                    $params->sql = self::prepare($sql[0], array($sql[1], $sql[2], $sql[3]));
+                    $params->sql = self::prepare( $sql[ 0 ], array( $sql[ 1 ], $sql[ 2 ], $sql[ 3 ] ) );
             }
             else
-                $params = array_merge($params, $sql);
+                $params = array_merge( $params, $sql );
         }
 
-        $params->sql = trim($params->sql);
+        $params->sql = trim( $params->sql );
 
         // Run Query
-        $params->sql = self::do_hook('query', $params->sql, $params);
+        $params->sql = self::do_hook( 'query', $params->sql, $params );
 
         $result = $wpdb->query( $params->sql );
 
-        $result = self::do_hook('query_result', $result, $params);
+        $result = self::do_hook( 'query_result', $result, $params );
 
-        if (false === $result && !empty($params->error) && !empty($wpdb->last_error))
-            return pods_error("{$params->error}; SQL: {$params->sql}; Response: {$wpdb->last_error}", $params->display_errors);
+        if ( false === $result && !empty( $params->error ) && !empty( $wpdb->last_error ) )
+            return pods_error( "{$params->error}; SQL: {$params->sql}; Response: {$wpdb->last_error}", $params->display_errors );
 
-        if ('INSERT' == substr($params->sql, 0, 6))
+        if ( 'INSERT' == substr( $params->sql, 0, 6 ) || 'REPLACE' == substr( $params->sql, 0, 7 ) )
             $result = $wpdb->insert_id;
-        elseif ('SELECT' == substr($params->sql, 0, 6)) {
+        elseif ( 'SELECT' == substr( $params->sql, 0, 6 ) ) {
             $result = (array) $wpdb->last_result;
 
-            if (!empty($result) && !empty($params->results_error))
-                return pods_error( $params->results_error, $params->display_errors);
-            elseif (empty($result) && !empty($params->no_results_error))
-                return pods_error( $params->no_results_error , $params->display_errors);
+            if ( !empty( $result ) && !empty( $params->results_error ) )
+                return pods_error( $params->results_error, $params->display_errors );
+            elseif ( empty( $result ) && !empty( $params->no_results_error ) )
+                return pods_error( $params->no_results_error, $params->display_errors );
         }
 
         return $result;
@@ -1108,17 +1067,19 @@ class PodsData {
     public static function get_tables ($wp_core = true, $pods_tables = true) {
         global $wpdb;
 
-        $core_wp_tables = array($wpdb->options,
-                                $wpdb->comments,
-                                $wpdb->commentmeta,
-                                $wpdb->posts,
-                                $wpdb->postmeta,
-                                $wpdb->users,
-                                $wpdb->usermeta,
-                                $wpdb->links,
-                                $wpdb->terms,
-                                $wpdb->term_taxonomy,
-                                $wpdb->term_relationships);
+        $core_wp_tables = array(
+            $wpdb->options,
+            $wpdb->comments,
+            $wpdb->commentmeta,
+            $wpdb->posts,
+            $wpdb->postmeta,
+            $wpdb->users,
+            $wpdb->usermeta,
+            $wpdb->links,
+            $wpdb->terms,
+            $wpdb->term_taxonomy,
+            $wpdb->term_relationships
+        );
 
         $showTables = mysql_list_tables(DB_NAME);
 
@@ -1142,18 +1103,22 @@ class PodsData {
      * @param string $table
      */
     public static function get_table_columns ($table) {
-        $table_columns = self::query('SHOW COLUMNS FROM ' . $table);
+        global $wpdb;
+
+        self::query( "SHOW COLUMNS FROM `{$table}` " );
+
+        $table_columns = $wpdb->last_result;
 
         $table_cols_and_types = array();
 
-        while ($table_col = mysql_fetch_assoc($table_columns)) {
+        foreach ( $table_columns as $table_col ) {
             // Get only the type, not the attributes
-            if (false === strpos($table_col['Type'], '('))
-                $modified_type = $table_col['Type'];
+            if ( false === strpos( $table_col->Type, '(' ) )
+                $modified_type = $table_col->Type;
             else
-                $modified_type = substr($table_col['Type'], 0, (strpos($table_col['Type'], '(')));
+                $modified_type = substr( $table_col->Type, 0, ( strpos( $table_col->Type, '(' ) ) );
 
-            $table_cols_and_types[$table_col['Field']] = $modified_type;
+            $table_cols_and_types[ $table_col->Field ] = $modified_type;
         }
 
         return $table_cols_and_types;

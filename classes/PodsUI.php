@@ -3,15 +3,17 @@ class PodsUI
 {
     // internal
     private $pods_data = false;
-    private $actions = array('manage',
-                             'add',
-                             'edit',
-                             'duplicate',
-                             'save',
-                             'view',
-                             'delete',
-                             'reorder',
-                             'export');
+    private $actions = array(
+        'manage',
+        'add',
+        'edit',
+        'duplicate',
+        'save',
+        'view',
+        'delete',
+        'reorder',
+        'export'
+    );
     private $ui_page = array();
     private $unique_identifier = false;
 
@@ -19,20 +21,22 @@ class PodsUI
     public $pod = false;
     public $id = 0;
     public $num = ''; // allows multiple co-existing PodsUI instances with separate functionality in URL
-    static $excluded = array('do',
-                             'id',
-                             'pg',
-                             'search',
-                             'orderby',
-                             'orderby_dir',
-                             'limit',
-                             'action',
-                             'export',
-                             'export_type',
-                             'export_delimiter',
-                             'remove_export',
-                             'updated',
-                             'duplicate'); // used in var_update
+    static $excluded = array(
+        'do',
+        'id',
+        'pg',
+        'search',
+        'orderby',
+        'orderby_dir',
+        'limit',
+        'action',
+        'export',
+        'export_type',
+        'export_delimiter',
+        'remove_export',
+        'updated',
+        'duplicate'
+    ); // used in var_update
 
     // ui
     public $item = false; // to be set with localized string
@@ -42,31 +46,40 @@ class PodsUI
     public $icon = false;
     public $css = false; // set to a URL of stylesheet to include
     public $wpcss = false; // set to true to include WP Admin stylesheets
-    public $fields = array('manage' => array(),
-                           'search' => array(),
-                           'form' => array(),
-                           'add' => array(),
-                           'edit' => array(),
-                           'duplicate' => array(),
-                           'view' => array(),
-                           'reorder' => array(),
-                           'export' => array());
+    public $fields = array(
+        'manage' => array(),
+        'search' => array(),
+        'form' => array(),
+        'add' => array(),
+        'edit' => array(),
+        'duplicate' => array(),
+        'view' => array(),
+        'reorder' => array(),
+        'export' => array()
+    );
     public $searchable = true;
     public $sortable = true;
     public $pagination = true;
     public $pagination_total = true;
-    public $export = array('on' => false,
-                           'formats' => array('csv' => ',',
-                                              'tsv' => "\t",
-                                              'xml' => false,
-                                              'json' => false),
-                           'url' => false,
-                           'type' => false);
-    public $reorder = array('on' => false,
-                            'limit' => 250,
-                            'orderby' => false,
-                            'orderby_dir' => 'ASC',
-                            'sql' => null);
+    public $export = array(
+        'on' => false,
+        'formats' => array(
+            'csv' => ',',
+            'tsv' => "\t",
+            'xml' => false,
+            'json' => false
+        ),
+        'url' => false,
+        'type' => false
+    );
+
+    public $reorder = array(
+        'on' => false,
+        'limit' => 250,
+        'orderby' => false,
+        'orderby_dir' => 'ASC',
+        'sql' => null
+    );
     public $screen_options = array(); // set to 'page' => 'Text'; false hides link
     public $help = array(); // set to 'page' => 'Text'; 'page' => array('link' => 'yourhelplink'); false hides link
 
@@ -76,48 +89,68 @@ class PodsUI
     public $search_across = true;
     public $search_across_picks = false;
     public $default_none = false;
-    public $where = array('manage' => null,
-                          'edit' => null,
-                          'duplicate' => null,
-                          'delete' => null,
-                          'reorder' => null);
+
+    public $where = array(
+        'manage' => null,
+        'edit' => null,
+        'duplicate' => null,
+        'delete' => null,
+        'reorder' => null
+    );
     public $orderby = false;
     public $orderby_dir = 'DESC';
     public $limit = 25;
     public $page = 1;
     public $total = 0;
     public $total_found = 0;
-    public $session = array('search',
-                            'filters'); // allowed: search, filters, show_per_page, orderby (priority over usermeta)
-    public $user = array('show_per_page',
-                         'orderby'); // allowed: search, filters, show_per_page, orderby (priority under session)
+
+    public $session = array(
+        'search',
+        'filters'
+    ); // allowed: search, filters, show_per_page, orderby (priority over usermeta)
+    public $user = array(
+        'show_per_page',
+        'orderby'
+    ); // allowed: search, filters, show_per_page, orderby (priority under session)
 
     // advanced data
-    public $sql = array('table' => null,
-                        'field_id' => 'id',
-                        'field_index' => 'name',
-                        'select' => null,
-                        'sql' => null);
+    public $sql = array(
+        'table' => null,
+        'field_id' => 'id',
+        'field_index' => 'name',
+        'select' => null,
+        'sql' => null
+    );
     public $data = false;
     public $row = array();
 
     // actions
     public $action = 'manage';
-    public $action_after = array('add' => 'edit',
-                                 'edit' => 'edit',
-                                 'duplicate' => 'edit'); // set action to 'manage'
+
+    public $action_after = array(
+        'add' => 'edit',
+        'edit' => 'edit',
+        'duplicate' => 'edit'
+    ); // set action to 'manage'
     public $do = false;
-    public $action_links = array('add' => null,
-                                 'edit' => null,
-                                 'duplicate' => null,
-                                 'view' => null,
-                                 'delete' => null,
-                                 'reorder' => null,
-                                 'export' => null); // custom links (callable allowed)
-    public $actions_disabled = array('view',
-                                     'export'); // disable actions
+
+    public $action_links = array(
+        'add' => null,
+        'edit' => null,
+        'duplicate' => null,
+        'view' => null,
+        'delete' => null,
+        'reorder' => null,
+        'export' => null
+    ); // custom links (callable allowed)
+    public $actions_disabled = array(
+        'view',
+        'export'
+    ); // disable actions
     public $actions_hidden = array(); // hide actions to not show them but allow them
     public $actions_custom = array(); // overwrite existing actions or add your own
+
+    public $save = false; // Allow custom save handling for tables that aren't Pod-based
 
     /**
      * Generate UI for Data Management
@@ -128,46 +161,59 @@ class PodsUI
      * @license http://www.gnu.org/licenses/gpl-2.0.html
      * @since 2.0.0
      */
-    public function __construct ($options, $deprecated = false) {
+    public function __construct ( $options, $deprecated = false ) {
         $object = null;
-        if (is_object($options)) {
+
+        if ( is_object( $options ) ) {
             $object = $options;
             $options = array();
-            if (isset($object->ui)) {
+
+            if ( isset( $object->ui ) ) {
                 $options = $object->ui;
-                unset($object->ui);
+
+                unset( $object->ui );
             }
-            if (is_object($object) && 'Pods' == get_class($object))
+
+            if ( is_object( $object ) && 'Pods' == get_class( $object ) )
                 $this->pod = &$object;
         }
-        if (!is_array($options)) {
-            parse_str($options, $options);
+
+        if ( !is_array( $options ) ) {
+            parse_str( $options, $options );
             // need to come back to this and allow for multi-dimensional strings
             // like: option=value&option2=value2&option3=key[val],key2[val2]&option4=this,that,another
         }
-        if (!is_object($object) && isset($options['pod'])) {
-            if (isset($options['id']))
-                $this->pod =& pods($options['pod'], $options['id']);
+
+        if ( !is_object( $object ) && isset( $options[ 'pod' ] ) ) {
+            if ( is_object( $options[ 'pod' ] ) )
+                $this->pod = $options[ 'pod' ];
+            elseif ( isset( $options[ 'id' ] ) )
+                $this->pod =& pods( $options[ 'pod' ], $options[ 'id' ] );
             else
-                $this->pod =& pods($options['pod']);
-            unset($options['pod']);
+                $this->pod =& pods( $options[ 'pod' ] );
+
+            unset( $options[ 'pod' ] );
         }
-        if (false !== $deprecated)
-            $options = $this->setup_deprecated($options);
-        $options = $this->do_hook('pre_init', $options);
-        $this->setup($options);
-        if ((!is_object($this->pod) || 'Pods' != get_class($this->pod)) && false === $this->sql['table'] && false === $this->data ) {
-            echo $this->error(__('<strong>Error:</strong> Pods UI needs a Pods object or a Table definition to run from, see the User Guide for more information.', 'pods'));
+
+        if ( false !== $deprecated )
+            $options = $this->setup_deprecated( $options );
+
+        if ( is_object( $this->pod ) && is_object( $this->pod->data ) )
+            $this->pods_data =& $this->pod->data;
+        elseif ( is_object( $this->pod ) )
+            $this->pods_data =& pods_data( $this->pod->pod );
+        elseif ( !is_object( $this->pod ) )
+            $this->pods_data =& pods_data( $this->pod );
+
+        $options = $this->do_hook( 'pre_init', $options );
+        $this->setup( $options );
+
+        if ( ( !is_object( $this->pod ) || 'Pods' != get_class( $this->pod ) ) && false === $this->sql[ 'table' ] && false === $this->data ) {
+            echo $this->error( __( '<strong>Error:</strong> Pods UI needs a Pods object or a Table definition to run from, see the User Guide for more information.', 'pods' ) );
+
             return false;
         }
-        if (!is_object($this->pods_data)) {
-            if (is_object($this->pod) && is_object($this->pod->pod_data))
-                $this->pod_data =& $this->pod->pod_data;
-            elseif (is_object($this->pod))
-                $this->pods_data =& pods_data($this->pod->pod);
-            elseif (!is_object($this->pod))
-                $this->pods_data =& pods_data($this->pod);
-        }
+
         $this->go();
     }
 
@@ -460,11 +506,11 @@ class PodsUI
         $options->validate( 'page', pods_var( 'pg' . $options->num, 'get', $this->page ), 'absint' );
         $options->validate( 'limit', pods_var( 'limit' . $options->num, 'get', $this->limit ), 'int' );
 
-        if ( isset( $this->pod ) && is_object( $this->pod ) ) {
+        if ( isset( $this->pods_data ) && is_object( $this->pods_data ) ) {
             $this->sql = array(
-                'table' => $this->pod->table,
-                'field_id' => $this->pod->field_id,
-                'field_index' => $this->pod->field_index
+                'table' => $this->pods_data->table,
+                'field_id' => $this->pods_data->field_id,
+                'field_index' => $this->pods_data->field_index
             );
         }
         $options->validate( 'sql', $this->sql, 'array_merge' );
@@ -501,9 +547,7 @@ class PodsUI
 
         $options->validate( 'fields', array(
             'manage' => array(
-                'name' => __( 'Name', 'pods' ),
-                'created' => __( 'Date Created', 'pods' ),
-                'modified' => __( 'Last Modified', 'pods' )
+                $options->sql[ 'field_index' ] => array( 'label' => __( 'Name', 'pods' ) )
             )
         ), 'array' );
 
@@ -619,93 +663,104 @@ class PodsUI
                 $filterable = true;
                 $this->filters = array();
             }
+
             foreach ($fields as $field => $attributes) {
-                if (!is_array($attributes)) {
-                    $field = $attributes;
-                    $attributes = array();
-                }
-                if (!isset($attributes['id']))
-                    $attributes['id'] = '';
-                if (!isset($attributes['real_name']))
-                    $attributes['real_name'] = false;
-                if (!isset($attributes['label']))
-                    $attributes['label'] = ucwords(str_replace('_', ' ', $field));
-                if (!isset($attributes['type']))
-                    $attributes['type'] = 'text';
-                if ('related' != $attributes['type'] || !isset($attributes['related']))
-                    $attributes['related'] = false;
-                if ('related'!=$attributes['type']||!isset($attributes['related_id']))
-                    $attributes['related_id'] = 'id';
-                if ('related' != $attributes['type'] || !isset($attributes['related_field']))
-                    $attributes['related_field'] = 'name';
-                if ('related' != $attributes['type'] || !isset($attributes['related_multiple']))
-                    $attributes['related_multiple'] = false;
-                if ('related' != $attributes['type'] || !isset($attributes['related_sql']))
-                    $attributes['related_sql'] = false;
-                if ('related' == $attributes['type'] && (is_array($attributes['related']) || strpos($attributes['related'], ','))) {
-                    if (!is_array($attributes['related'])) {
-                        $attributes['related'] = @explode(',', $attributes['related']);
-                        $related_items = array();
-                        foreach ($attributes['related'] as $key => $label) {
-                            if (is_numeric($key)) {
-                                $key = $label;
-                                $label = ucwords(str_replace('_', ' ', $label));
-                            }
-                            $related_items[$key] = $label;
-                        }
-                        $attributes['related'] = $related_items;
+                if ( !is_array( $attributes ) ) {
+                    if ( is_int( $field ) ) {
+                        $field = $attributes;
+                        $attributes = array();
                     }
-                    if (empty($attributes['related']))
-                        $attributes['related'] = false;
+                    else
+                        $attributes = array( 'label' => $attributes );
                 }
-                if (!isset($attributes['readonly']))
-                    $attributes['readonly'] = false;
-                if (!isset($attributes['date_touch']) || !in_array($attributes['type'], array('date', 'time', 'datetime')))
-                    $attributes['date_touch'] = false;
-                if (!isset($attributes['date_touch_on_create']) || !in_array($attributes['type'], array('date', 'time', 'datetime')))
-                    $attributes['date_touch_on_create'] = false;
-                if (!isset($attributes['display']))
-                    $attributes['display'] = true;
-                if (!isset($attributes['hidden']))
-                    $attributes['hidden'] = false;
-                if (!isset($attributes['sortable']) || false === $this->sortable)
-                    $attributes['sortable'] = (false !== $this->sortable) ? true : false;
-                if (!isset($attributes['search']) || false === $this->searchable)
-                    $attributes['search'] = (false !== $this->searchable) ? true : false;
-                if (!isset($attributes['filter']) || false === $this->searchable)
-                    $attributes['filter'] = false;
-                if (false !== $attributes['filter'] && false !== $filterable)
-                    $this->filters[] = $field;
-                if (false === $attributes['filter'] || !isset($attributes['filter_label']) || !in_array($field, $this->filters))
-                    $attributes['filter_label'] = $attributes['label'];
-                if (false === $attributes['filter'] || !isset($attributes['filter_default']) || !in_array($field, $this->filters))
-                    $attributes['filter_default'] = false;
-                if (false === $attributes['filter'] || !isset($attributes['date_ongoing']) || !in_array($attributes['type'], array('date', 'time', 'datetime')) || !in_array($field, $this->filters))
-                    $attributes['date_ongoing'] = false;
-                if (false === $attributes['filter'] || !isset($attributes['date_ongoing']) || !in_array($attributes['type'], array('date', 'time', 'datetime')) || !isset($attributes['date_ongoing_default']) || !in_array($field, $this->filters))
-                    $attributes['date_ongoing_default'] = false;
-                if (!isset($attributes['export']))
-                    $attributes['export'] = true;
-                if (!isset($attributes['group_related']))
-                    $attributes['group_related'] = false;
-                if (!isset($attributes['comments']))
-                    $attributes['comments'] = '';
-                if (!isset($attributes['comments_top']))
-                    $attributes['comments_top'] = false;
-                if (!isset($attributes['custom_view']))
-                    $attributes['custom_view'] = false;
-                if (!isset($attributes['custom_input']))
-                    $attributes['custom_input'] = false;
-                if (isset($attributes['display_helper'])) // pods ui backward compatibility
-                    $attributes['custom_display'] = $attributes['display_helper'];
-                if (!isset($attributes['custom_display']))
-                    $attributes['custom_display'] = false;
-                if (!isset($attributes['custom_relate']))
-                    $attributes['custom_relate'] = false;
-                if (!isset($attributes['custom_form_display']))
-                    $attributes['custom_form_display'] = false;
-                if ('search_columns' == $which && false === $attributes['search'])
+
+                if ( !isset( $attributes[ 'id' ] ) )
+                    $attributes[ 'id' ] = '';
+                if ( !isset( $attributes[ 'real_name' ] ) )
+                    $attributes[ 'real_name' ] = $field;
+                if ( !isset( $attributes[ 'label' ] ) )
+                    $attributes[ 'label' ] = ucwords( str_replace( '_', ' ', $field ) );
+                if ( !isset( $attributes[ 'type' ] ) )
+                    $attributes[ 'type' ] = 'text';
+                if ( !isset( $attributes[ 'date_format_type' ] ) )
+                    $attributes[ 'date_format_type' ] = 'date';
+                if ( 'related' != $attributes[ 'type' ] || !isset( $attributes[ 'related' ] ) )
+                    $attributes[ 'related' ] = false;
+                if ( 'related' != $attributes[ 'type' ] || !isset( $attributes[ 'related_id' ] ) )
+                    $attributes[ 'related_id' ] = 'id';
+                if ( 'related' != $attributes[ 'type' ] || !isset( $attributes[ 'related_field' ] ) )
+                    $attributes[ 'related_field' ] = 'name';
+                if ( 'related' != $attributes[ 'type' ] || !isset( $attributes[ 'related_multiple' ] ) )
+                    $attributes[ 'related_multiple' ] = false;
+                if ( 'related' != $attributes[ 'type' ] || !isset( $attributes[ 'related_sql' ] ) )
+                    $attributes[ 'related_sql' ] = false;
+                if ( 'related' == $attributes[ 'type' ] && ( is_array( $attributes[ 'related' ] ) || strpos( $attributes[ 'related' ], ',' ) ) ) {
+                    if ( !is_array( $attributes[ 'related' ] ) ) {
+                        $attributes[ 'related' ] = @explode( ',', $attributes[ 'related' ] );
+                        $related_items = array();
+                        foreach ( $attributes[ 'related' ] as $key => $label ) {
+                            if ( is_numeric( $key ) ) {
+                                $key = $label;
+                                $label = ucwords( str_replace( '_', ' ', $label ) );
+                            }
+                            $related_items[ $key ] = $label;
+                        }
+                        $attributes[ 'related' ] = $related_items;
+                    }
+                    if ( empty( $attributes[ 'related' ] ) )
+                        $attributes[ 'related' ] = false;
+                }
+                if ( !isset( $attributes[ 'readonly' ] ) )
+                    $attributes[ 'readonly' ] = false;
+                if ( !isset( $attributes[ 'date_touch' ] ) || 'date' != $attributes[ 'type' ] )
+                    $attributes[ 'date_touch' ] = false;
+                if ( !isset( $attributes[ 'date_touch_on_create' ] ) || 'date' != $attributes[ 'type' ] )
+                    $attributes[ 'date_touch_on_create' ] = false;
+                if ( !isset( $attributes[ 'display' ] ) )
+                    $attributes[ 'display' ] = true;
+                if ( !isset( $attributes[ 'hidden' ] ) )
+                    $attributes[ 'hidden' ] = false;
+                if ( !isset( $attributes[ 'sortable' ] ) || false === $this->sortable )
+                    $attributes[ 'sortable' ] = ( false !== $this->sortable ) ? true : false;
+                if ( !isset( $attributes[ 'search' ] ) || false === $this->searchable )
+                    $attributes[ 'search' ] = ( false !== $this->searchable ) ? true : false;
+                if ( !isset( $attributes[ 'filter' ] ) || false === $this->searchable )
+                    $attributes[ 'filter' ] = false;
+                if ( false !== $attributes[ 'filter' ] && false !== $filterable )
+                    $this->filters[ ] = $field;
+                if ( false === $attributes[ 'filter' ] || !isset( $attributes[ 'filter_label' ] ) || !in_array( $field, $this->filters ) )
+                    $attributes[ 'filter_label' ] = $attributes[ 'label' ];
+                if ( false === $attributes[ 'filter' ] || !isset( $attributes[ 'filter_default' ] ) || !in_array( $field, $this->filters ) )
+                    $attributes[ 'filter_default' ] = false;
+                if ( false === $attributes[ 'filter' ] || !isset( $attributes[ 'date_ongoing' ] ) || 'date' != $attributes[ 'type' ] || !in_array( $field, $this->filters ) )
+                    $attributes[ 'date_ongoing' ] = false;
+                if ( false === $attributes[ 'filter' ] || !isset( $attributes[ 'date_ongoing' ] ) || 'date' != $attributes[ 'type' ] || !isset( $attributes[ 'date_ongoing_default' ] ) || !in_array( $field, $this->filters ) )
+                    $attributes[ 'date_ongoing_default' ] = false;
+                if ( !isset( $attributes[ 'export' ] ) )
+                    $attributes[ 'export' ] = true;
+                if ( !isset( $attributes[ 'group_related' ] ) )
+                    $attributes[ 'group_related' ] = false;
+                if ( !isset( $attributes[ 'comments' ] ) )
+                    $attributes[ 'comments' ] = '';
+                if ( !isset( $attributes[ 'comments_top' ] ) )
+                    $attributes[ 'comments_top' ] = false;
+                if ( !isset( $attributes[ 'custom_view' ] ) )
+                    $attributes[ 'custom_view' ] = false;
+                if ( !isset( $attributes[ 'custom_input' ] ) )
+                    $attributes[ 'custom_input' ] = false;
+                if ( isset( $attributes[ 'display_helper' ] ) ) // pods ui backward compatibility
+                    $attributes[ 'custom_display' ] = $attributes[ 'display_helper' ];
+                if ( !isset( $attributes[ 'custom_display' ] ) )
+                    $attributes[ 'custom_display' ] = false;
+                if ( !isset( $attributes[ 'custom_relate' ] ) )
+                    $attributes[ 'custom_relate' ] = false;
+                if ( !isset( $attributes[ 'custom_form_display' ] ) )
+                    $attributes[ 'custom_form_display' ] = false;
+                if ( 'search_columns' == $which && false === $attributes[ 'search' ] )
                     continue;
+
+                $attributes = PodsForm::field_setup( $attributes, null, $attributes[ 'type' ] );
+
                 $new_fields[$field] = $attributes;
             }
             $fields = $new_fields;
@@ -801,7 +856,7 @@ class PodsUI
         $this->ui_page = array($this->action);
         if ('add' == $this->action && !in_array($this->action, $this->actions_disabled)) {
             $this->ui_page[] = 'form';
-            if ('create' == $this->do && !in_array('save', $this->actions_disabled) && !in_array($this->do, $this->actions_disabled) && !empty($_POST)) {
+            if ('create' == $this->do && $this->save && !in_array($this->do, $this->actions_disabled) && !empty($_POST)) {
                 $this->ui_page[] = $this->do;
                 $this->save(true);
                 $this->manage();
@@ -826,12 +881,12 @@ class PodsUI
             }
             $this->manage(true);
         }
-        elseif ('save' == $this->do && !in_array('save', $this->actions_disabled) && !in_array($this->do, $this->actions_disabled) && !empty($_POST)) {
+        elseif ('save' == $this->do && $this->save && !in_array($this->do, $this->actions_disabled) && !empty($_POST)) {
             $this->ui_page[] = $this->do;
             $this->save();
             $this->manage();
         }
-        elseif ('create' == $this->do && !in_array('save', $this->actions_disabled) && !in_array($this->do, $this->actions_disabled) && !empty($_POST)) {
+        elseif ('create' == $this->do && $this->save && !in_array($this->do, $this->actions_disabled) && !empty($_POST)) {
             $this->ui_page[] = $this->do;
             $this->save(true);
             $this->manage();
@@ -844,14 +899,19 @@ class PodsUI
             return call_user_func( $this->actions_custom[ $this->action ][ 'callback' ], $this );
         elseif (!in_array('manage', $this->actions_disabled))
             $this->manage();
+
         // handle session / user persistent settings for show_per_page, orderby, search, and filters
         $methods = array('session', 'user');
         foreach ($methods as $method) {
             foreach ($this->$method as $setting) {
                 if ('show_per_page' == $setting)
                     $value = $this->limit;
-                elseif ('orderby' == $setting)
-                    $value = $this->orderby . ' ' . $this->orderby_dir;
+                elseif ('orderby' == $setting) {
+                    if ( empty( $this->orderby ) )
+                        $value = '';
+                    else
+                        $value = $this->orderby . ' ' . $this->orderby_dir;
+                }
                 else
                     $value = $this->$setting;
                 pods_var_set($value, $setting, $method);
@@ -866,7 +926,15 @@ class PodsUI
 ?>
     <div class="wrap">
         <div id="icon-edit-pages" class="icon32"<?php if (false !== $this->icon) { ?> style="background-position:0 0;background-image:url(<?php echo $this->icon; ?>);"<?php } ?>><br /></div>
-        <h2><?php echo $this->heading['add']; ?> <?php echo $this->item; ?> <small>(<a href="<?php echo pods_var_update(array('action' . $this->num => 'manage', 'id' . $this->num => ''), null, $this->exclusion()); ?>">&laquo; <?php _e('Back to', 'pods'); ?> <?php echo $this->heading['manage']; ?></a>)</small></h2>
+        <h2>
+            <?php
+                echo $this->heading['add'] . ' ' . $this->item;
+
+                $link = pods_var_update( array( 'action' . $this->num => 'manage', 'id' . $this->num => '' ), null, $this->exclusion() );
+            ?>
+            <a href="<?php echo $link; ?>" class="add-new-h2">&laquo; <?php _e( 'Back to', 'pods' ); ?> <?php echo $this->heading[ 'manage' ]; ?></a>
+        </h2>
+
         <?php $this->form(true); ?>
     </div>
 <?php
@@ -883,34 +951,76 @@ class PodsUI
 ?>
     <div class="wrap">
         <div id="icon-edit-pages" class="icon32"<?php if (false !== $this->icon) { ?> style="background-position:0 0;background-image:url(<?php echo $this->icon; ?>);"<?php } ?>><br /></div>
-        <h2><?php echo (true === $duplicate) ? $this->heading['duplicate'] : $this->heading['edit']; ?> <?php echo $this->item; ?><small>(<a href="<?php echo pods_var_update(array('action' . $this->num => 'manage', 'id' . $this->num => ''), null, $this->exclusion()); ?>">&laquo; <?php _e('Back to', 'pods'); ?> <?php echo $this->heading['manage']; ?></a>)</small></h2>
+        <h2>
+            <?php
+                echo (true === $duplicate) ? $this->heading['duplicate'] : $this->heading['edit'] . ' ' . $this->item;
+
+                if ( !in_array( 'add', $this->actions_disabled ) ) {
+                    $link = pods_var_update( array( 'action' . $this->num => 'manage', 'id' . $this->num => '' ), null, $this->exclusion() );
+            ?>
+                    <a href="<?php echo $link; ?>" class="add-new-h2">&laquo; <?php _e( 'Back to', 'pods' ); ?> <?php echo $this->heading[ 'manage' ]; ?></a>
+            <?php
+                }
+                else {
+                    $link = pods_var_update( array( 'action' . $this->num => 'add', 'id' . $this->num => '' ), null, $this->exclusion() );
+            ?>
+                    <a href="<?php echo $link; ?>" class="add-new-h2"><?php echo $this->heading[ 'add' ]; ?></a>
+            <?php
+                }
+            ?>
+        </h2>
+
         <?php $this->form(false, $duplicate); ?>
     </div>
 <?php
     }
 
     public function form ($create = false, $duplicate = false) {
-        $this->do_hook('form');
-        if (isset($this->actions_custom['form']) && is_callable($this->actions_custom['form']))
-            return call_user_func($this->actions_custom['form'], $this);
-        $submit = $this->label['add'];
+        $this->do_hook( 'form' );
+
+        if ( isset( $this->actions_custom[ 'form' ] ) && is_callable( $this->actions_custom[ 'form' ] ) )
+            return call_user_func( $this->actions_custom[ 'form' ], $this );
+
+        $submit = $this->label[ 'add' ];
         $id = null;
-        $vars = array('action' . $this->num => $this->action_after['add'], 'do' . $this->num => 'create', 'id' . $this->num => '');
-        if (false === $create) {
-            if (empty($this->row))
+        $vars = array(
+            'action' . $this->num => $this->action_after[ 'add' ],
+            'do' . $this->num => 'create',
+            'id' . $this->num => 'X_ID_X'
+        );
+
+        if ( false === $create ) {
+            if ( empty( $this->row ) )
                 $this->get_row();
-            if (empty($this->row))
+
+            if ( empty( $this->row ) )
                 return $this->error( sprintf( __( '<strong>Error:</strong> %s not found.', 'pods' ), $this->item ) );
-            $submit = $this->label['edit'];
-            $id = $this->row[$this->sql['field_id']];
-            $vars = array('action' . $this->num => $this->action_after['edit'], 'do' . $this->num => 'save', 'id' . $this->num => $id);
-            if (1 == $duplicate) {
-                $submit = $this->label['duplicate'];
+
+            $submit = $this->label[ 'edit' ];
+            $id = $this->row[ $this->sql[ 'field_id' ] ];
+            $vars = array(
+                'action' . $this->num => $this->action_after[ 'edit' ],
+                'do' . $this->num => 'save',
+                'id' . $this->num => $id
+            );
+
+            if ( 1 == $duplicate ) {
+                $submit = $this->label[ 'duplicate' ];
                 $id = null;
-                $vars = array('action' . $this->num => $this->action_after['duplicate'], 'do' . $this->num => 'create', 'id' . $this->num => '');
+                $vars = array(
+                    'action' . $this->num => $this->action_after[ 'duplicate' ],
+                    'do' . $this->num => 'create',
+                    'id' . $this->num => 'X_ID_X'
+                );
             }
         }
-        // HOOK INTO FORM CLASS HERE
+
+        $fields =& $this->fields[ $this->action ];
+        $pod =& $this->pod;
+        $thank_you = pods_var_update( $vars, null, $this->exclusion() );
+        $obj =& $this;
+
+        pods_view( PODS_DIR . 'ui/admin/form.php', compact( array_keys( get_defined_vars() ) ) );
     }
 
     public function view () {
@@ -930,13 +1040,13 @@ class PodsUI
         if (isset($this->actions_custom['save']) && is_callable($this->actions_custom['save']))
             return call_user_func($this->actions_custom['save'], $insert, $this);
         global $wpdb;
-        $action = 'saved';
+        $action = __( 'saved', 'pods' );
         if (true === $insert)
-            $action = 'created';
+            $action = __( 'created', 'pods' );
         $field_sql = array();
         $values = array();
         $data = array();
-        foreach ($this->form_fields as $field => $attributes) {
+        foreach ( $this->fields[ 'form' ] as $field => $attributes ) {
             $vartype = '%s';
             if ('bool' == $attributes['type'])
                 $selected = (1 == pods_var($field, 'post', 0)) ? 1 : 0;
@@ -1029,52 +1139,102 @@ class PodsUI
         $this->do_hook('post_delete', $id);
     }
 
-    public function get_field ($field) {
+    public function get_field ( $field ) {
         $value = null;
 
         // use PodsData to get field
 
-        if (isset($this->actions_custom['get_field']) && is_callable($this->actions_custom['get_field']))
-            return call_user_func($this->actions_custom['get_field'], $field, $this);
-        if (false !== $this->pod && is_object($this->pod) && 'Pods' == get_class($this->pod))
-            $value = $this->pod->field($field);
-        elseif (isset($this->row[$field]))
-            $value = $this->row[$field];
-        return $this->do_hook('get_field', $value, $field);
+        if ( isset( $this->actions_custom[ 'get_field' ] ) && is_callable( $this->actions_custom[ 'get_field' ] ) )
+            return call_user_func( $this->actions_custom[ 'get_field' ], $field, $this );
+
+        if ( false !== $this->pod && is_object( $this->pod ) && 'Pods' == get_class( $this->pod ) )
+            $value = $this->pod->field( $field );
+        elseif ( isset( $this->row[ $field ] ) )
+            $value = $this->row[ $field ];
+
+        return $this->do_hook( 'get_field', $value, $field );
     }
 
     public function get_data () {
-        if ( !empty( $this->data ) )
-            return $this->data;
+        if ( false !== $this->pod && is_object( $this->pod ) && 'Pods' == get_class( $this->pod ) ) {
+            $orderby = '';
 
-        $this->pods_data->select(array('table' => $this->sql['table'],
-                                       'page' => (int) $this->page,
-                                       'limit' => (int) $this->limit,
-                                       'orderby' => '`' . $this->orderby . '` ' .$this->orderby_dir,
-                                       'search' => $this->searchable,
-                                       'search_query' => $this->search,
-                                       'fields' => $this->fields['search']));
-        $this->data = $this->pods_data->data;
-        $this->total = $this->pods_data->total();
-        $this->total_found = $this->pods_data->total_found();
+            if ( !empty( $this->orderby ) )
+                $orderby = '`' . $this->orderby . '` ' . strtoupper( $this->orderby_dir );
+
+            $params = array(
+                'page' => (int) $this->page,
+                'limit' => (int) $this->limit,
+                'orderby' => $orderby,
+                'search' => $this->searchable,
+                'search_query' => $this->search
+            );
+
+            $this->data = $this->pod->find( $params )->data();
+            $this->total = $this->pod->total();
+            $this->total_found = $this->pod->total_found();
+        }
+        else {
+            if ( !empty( $this->data ) )
+                return $this->data;
+
+            $orderby = '';
+
+            if ( !empty( $this->orderby ) )
+                $orderby = '`' . $this->orderby . '` ' . strtoupper( $this->orderby_dir );
+
+            $this->pods_data->select(
+                array(
+                    'table' => $this->sql[ 'table' ],
+                    'page' => (int) $this->page,
+                    'limit' => (int) $this->limit,
+                    'orderby' => $orderby,
+                    'search' => $this->searchable,
+                    'search_query' => $this->search,
+                    'fields' => $this->fields[ 'search' ]
+                )
+            );
+
+            $this->data = $this->pods_data->data;
+            $this->total = $this->pods_data->total();
+            $this->total_found = $this->pods_data->total_found();
+        }
+
+        return $this->data;
     }
 
     public function get_row () {
-        if ( !empty( $this->data ) && count( $this->data ) == $this->total_found && isset( $this->data[ $this->id ] ) )
-            return $this->data[ $this->id ];
+        if ( false !== $this->pod && is_object( $this->pod ) && 'Pods' == get_class( $this->pod ) ) {
+            $this->row = $this->pod->fetch( $this->id );
+            $this->total = $this->pod->total();
+            $this->total_found = $this->pod->total_found();
+        }
+        else {
+            if ( !empty( $this->data ) && count( $this->data ) == $this->total_found && isset( $this->data[ $this->id ] ) )
+                return $this->data[ $this->id ];
 
-        $this->pods_data->select(array('table' => $this->sql['table'],
-                                       'where' => '`' . $this->sql['field_id'] . '` = ' . (int) $this->id,
-                                       'orderby' => '`' . $this->orderby . '` ' .$this->orderby_dir,
-                                       'limit' => 1));
-        $this->row = get_object_vars((object) $this->pods_data->fetch());
-        $this->total = $this->total_found = 1;
+            $this->pods_data->select(
+                array(
+                    'table' => $this->sql['table'],
+                    'where' => '`' . $this->sql['field_id'] . '` = ' . (int) $this->id,
+                    'limit' => 1
+                )
+            );
+
+            $this->row = $this->pods_data->fetch();
+            $this->total = $this->pods_data->total();
+            $this->total_found = $this->pods_data->total_found();
+        }
+
+        return $this->row;
     }
 
     public function manage ($reorder = false) {
         $this->do_hook('manage', $reorder);
+
         if (isset($this->actions_custom['manage']) && is_callable($this->actions_custom['manage']))
             return call_user_func($this->actions_custom['manage'], $reorder, $this);
+
         $this->screen_meta();
 ?>
 <div class="wrap">
@@ -1376,26 +1536,32 @@ class PodsUI
                     $name_field = true;
                 $fields[$field] = $attributes;
                 $fields[$field]['field_id'] = $id;
-                $dir = 'ASC';
+                $dir = 'DESC';
+                $current_sort = ' asc';
                 if ($field == $this->orderby) {
-                    $current_sort = 'desc';
-                    if ('ASC' == $this->orderby_dir) {
-                        $dir = 'DESC';
-                        $current_sort = 'asc';
+                    if ('DESC' == $this->orderby_dir) {
+                        $dir = 'ASC';
+                        $current_sort = ' desc';
                     }
                 }
 
+                $att_id = '';
                 if ( !empty( $id ) )
-                    $id = ' id="' . $id . '"';
+                    $att_id = ' id="' . $id . '"';
 
                 if ( $fields[ $field ][ 'sortable' ] ) {
 ?>
-                <th scope="col" id="<?php echo $id; ?>" class="manage-column column-<?php echo $id; ?> sortable <?php echo $current_sort; ?>"><a href="<?php echo pods_var_update(array('orderby' . $this->num => $field, 'orderby_dir' . $this->num => $dir), array('limit' . $this->num, 'search' . $this->num), $this->exclusion()); ?>"><span><?php echo $attributes['label']; ?></span><span class="sorting-indicator"></span></a></th>
+                <th scope="col"<?php echo $att_id; ?> class="manage-column column-<?php echo $id; ?> sortable<?php echo $current_sort; ?>">
+                    <a href="<?php echo pods_var_update(array('orderby' . $this->num => $field, 'orderby_dir' . $this->num => $dir), array('limit' . $this->num, 'search' . $this->num), $this->exclusion()); ?>">
+                        <span><?php echo $attributes['label']; ?></span>
+                        <span class="sorting-indicator"></span>
+                    </a>
+                </th>
 <?php
                 }
                 else {
 ?>
-                <th scope="col"<?php echo $id; ?> class="manage-column column-<?php echo $id; ?>"><?php echo $attributes['label']; ?></th>
+                <th scope="col"<?php echo $att_id; ?> class="manage-column column-<?php echo $id; ?>"><?php echo $attributes['label']; ?></th>
 <?php
                 }
             }
@@ -1542,7 +1708,7 @@ class PodsUI
                                 $actions['duplicate'] = '<span class="edit"><a href="' . pods_var_update(array('action' . $this->num => 'duplicate', 'id' . $this->num => $row[$this->sql['field_id']]), null, $this->exclusion()) . '" title="' . __('Duplicate this item', 'pods') . '">' . __('Duplicate', 'pods') . '</a></span>';
 
                             if (!in_array('delete', $this->actions_disabled))
-                                $actions['delete'] = '<span class="delete"><a href="' . pods_var_update(array('action' . $this->num => 'delete', 'id' . $this->num => $row[$this->sql['field_id']]), null, $this->exclusion()) . '" title="' . __('Delete this item', 'pods') . '" class="submitdelete" onclick="if(confirm(\'' . esc_js( sprintf( __('You are about to delete this item \'%s\'\n \'Cancel\' to stop, \'OK\' to delete.', 'pods'), htmlentities( $row[ $field ], ENT_COMPAT, get_bloginfo( 'charset' ) ))) . '\')){return true;}return false;">' . __('Delete', 'pods') . '</a></span>';
+                                $actions['delete'] = '<span class="delete"><a href="' . pods_var_update(array('action' . $this->num => 'delete', 'id' . $this->num => $row[$this->sql['field_id']]), null, $this->exclusion()) . '" title="' . __('Delete this item', 'pods') . '" class="submitdelete" onclick="if(confirm(\'' . __('You are about to permanently delete this item\n Choose \\\'Cancel\\\' to stop, \\\'OK\\\' to delete.', 'pods' ) . '\')){return true;}return false;">' . __('Delete', 'pods') . '</a></span>';
 
                             if ( is_array( $this->actions_custom ) ) {
                                 foreach ( $this->actions_custom as $custom_action => $custom_data ) {
