@@ -1,10 +1,27 @@
 <?php
+/**
+ * @package Pods
+ */
 class PodsForm {
 
+    /**
+     * @var null
+     */
     static $field = null;
 
+    /**
+     * @var null
+     */
+    static $field_group = null;
+
+    /**
+     * @var null
+     */
     static $field_type = null;
 
+    /**
+     * @var array
+     */
     static $loaded = array();
 
     /**
@@ -93,14 +110,27 @@ class PodsForm {
     public static function field ( $name, $value, $type = 'text', $options = null, $pod = null, $id = null ) {
         $options = self::options( $type, $options );
 
-        if ( isset( $options[ 'default' ] ) && null === $value )
-            $value = $options[ 'default' ];
+        if ( null === $value || ( !empty( $pod ) && empty( $id ) ) )
+            $value = self::default_value( $value, $type, $name, $options, $pod, $id );
+
+        if ( false === PodsForm::permission( $type, $name, $options, null, $pod, $id ) )
+            return false;
 
         $value = apply_filters( 'pods_form_ui_field_' . $type . '_value', $value, $name, $options, $pod, $id );
 
         ob_start();
 
-        if ( method_exists( get_class(), 'field_' . $type ) )
+        $helper = false;
+
+        if ( 0 < strlen( pods_var_raw( 'input_helper', $options ) ) )
+            $helper = pods_api()->load_helper( array( 'name' => $options[ 'input_helper' ] ) );
+
+        if ( is_object( self::$loaded[ $type ] ) && method_exists( self::$loaded[ $type ], 'data' ) )
+            $data = $options[ 'data' ] = self::$loaded[ $type ]->data( $name, $value, $options, $pod, $id );
+
+        if ( !empty( $helper ) && 0 < strlen( pods_var_raw( 'code', $helper ) ) && ( !defined( 'PODS_DISABLE_EVAL' ) || !PODS_DISABLE_EVAL ) )
+            eval( '?>' . $helper[ 'code' ] );
+        elseif ( method_exists( get_class(), 'field_' . $type ) )
             echo call_user_func( array( get_class(), 'field_' . $type ), $name, $value, $options );
         elseif ( is_object( self::$loaded[ $type ] ) && method_exists( self::$loaded[ $type ], 'input' ) )
             self::$loaded[ $type ]->input( $name, $value, $options, $pod, $id );
@@ -164,10 +194,33 @@ class PodsForm {
      */
     public static function attributes ( $attributes, $name = null, $type = null, $options = null ) {
         $attributes = (array) apply_filters( 'pods_form_ui_field_' . $type . '_attributes', $attributes, $name, $options );
+
         foreach ( $attributes as $attribute => $value ) {
             if ( null === $value )
                 continue;
+
             echo ' ' . esc_attr( (string) $attribute ) . '="' . esc_attr( (string) $value ) . '"';
+        }
+    }
+
+    /**
+     * Output a field's data (for use with jQuery)
+     *
+     * @since 2.0.0
+     */
+    public static function data ( $data, $name = null, $type = null, $options = null ) {
+        $data = (array) apply_filters( 'pods_form_ui_field_' . $type . '_data', $data, $name, $options );
+
+        foreach ( $data as $key => $value ) {
+            if ( null === $value )
+                continue;
+
+            $key = sanitize_title( $key );
+
+            if ( is_array( $value ) )
+                $value = implode( ',', $value );
+
+            echo ' data-' . esc_attr( (string) $key ) . '="' . esc_attr( (string) $value ) . '"';
         }
     }
 
@@ -176,8 +229,9 @@ class PodsForm {
      *
      * @since 2.0.0
      */
-    public static function merge_attributes ( $attributes, $name = null, $type = null, $options = null ) {
+    public static function merge_attributes ( $attributes, $name = null, $type = null, $options = null, $classes = '' ) {
         $options = (array) $options;
+
         if ( !in_array( $type, array( 'label', 'comment' ) ) ) {
             $name_clean = self::clean( $name );
             $name_more_clean = self::clean( $name, true );
@@ -192,12 +246,14 @@ class PodsForm {
 
             $attributes = array_merge( $_attributes, (array) $attributes );
         }
-        if ( isset( $options[ 'attributes' ] ) && is_array( $options[ 'attributes' ] ) && !empty( $options[ 'attributes' ] ) ) {
+
+        if ( isset( $options[ 'attributes' ] ) && is_array( $options[ 'attributes' ] ) && !empty( $options[ 'attributes' ] ) )
             $attributes = array_merge( $attributes, $options[ 'attributes' ] );
-        }
+
         if ( isset( $options[ 'class' ] ) && !empty( $options[ 'class' ] ) ) {
             if ( is_array( $options[ 'class' ] ) )
                 $options[ 'class' ] = implode( ' ', $options[ 'class' ] );
+
             $options[ 'class' ] = (string) $options[ 'class' ];
             if ( isset( $attributes[ 'class' ] ) )
                 $attributes[ 'class' ] = $attributes[ 'class' ] . ' ' . $options[ 'class' ];
@@ -206,6 +262,17 @@ class PodsForm {
 
             $attributes[ 'class' ] = trim( $attributes[ 'class' ] );
         }
+
+        if ( !empty( $classes ) ) {
+            if ( isset( $attributes[ 'class' ] ) )
+                $attributes[ 'class' ] = $attributes[ 'class' ] . ' ' . $classes;
+            else
+                $attributes[ 'class' ] = $classes;
+        }
+
+        if ( 1 == pods_var( 'required', $options, 0 ) )
+            $attributes[ 'class' ] .= ' pods-validate pods-validate-required';
+
         $attributes = (array) apply_filters( 'pods_form_ui_field_' . $type . '_merge_attributes', $attributes, $name, $options );
         return $attributes;
     }
@@ -214,6 +281,14 @@ class PodsForm {
      * Setup options for a field and store them for later use
      *
      * @since 2.0.0
+     */
+    /**
+     * @static
+     *
+     * @param $type
+     * @param $options
+     *
+     * @return array
      */
     public static function options ( $type, $options ) {
         $options = (array) $options;
@@ -224,11 +299,21 @@ class PodsForm {
             unset( $options[ 'options' ] );
 
             $options = array_merge( $options_temp, $options );
+
+            $override = array(
+                'class'
+            );
+
+            foreach ( $override as $check ) {
+                if ( isset( $options_temp[ $check ] ) )
+                    $options[ $check ] = $options_temp[ $check ];
+            }
         }
 
         $defaults = self::options_setup( $type, $options );
 
         $core_defaults = array(
+            'id' => 0,
             'label' => '',
             'description' => '',
             'help' => '',
@@ -256,8 +341,16 @@ class PodsForm {
      *
      * @since 2.0.0
      */
+    /**
+     * @static
+     *
+     * @param $type
+     *
+     * @return array|null
+     */
     public static function options_setup ( $type ) {
         $core_defaults = array(
+            'id' => 0,
             'name' => '',
             'label' => '',
             'description' => '',
@@ -289,9 +382,19 @@ class PodsForm {
      *
      * @since 2.0.0
      */
+    /**
+     * @static
+     *
+     * @param null $fields
+     * @param null $core_defaults
+     * @param bool $single
+     *
+     * @return array|null
+     */
     public static function fields_setup ( $fields = null, $core_defaults = null, $single = false ) {
         if ( empty( $core_defaults ) ) {
             $core_defaults = array(
+                'id' => 0,
                 'name' => '',
                 'label' => '',
                 'description' => '',
@@ -312,8 +415,8 @@ class PodsForm {
         if ( $single )
             $fields = array( $fields );
 
-        foreach ( $fields as &$field ) {
-            $field = self::field_setup( $field, $core_defaults, pods_var( 'type', $field, 'text' ) );
+        foreach ( $fields as $f => $field ) {
+            $fields[ $f ] = self::field_setup( $field, $core_defaults, pods_var( 'type', $field, 'text' ) );
         }
 
         if ( $single )
@@ -327,11 +430,21 @@ class PodsForm {
      *
      * @since 2.0.0
      */
+    /**
+     * @static
+     *
+     * @param null $field
+     * @param null $core_defaults
+     * @param null $type
+     *
+     * @return array|null
+     */
     public static function field_setup ( $field = null, $core_defaults = null, $type = null ) {
         $options = array();
 
         if ( empty( $core_defaults ) ) {
             $core_defaults = array(
+                'id' => 0,
                 'name' => '',
                 'label' => '',
                 'description' => '',
@@ -360,8 +473,8 @@ class PodsForm {
             $field = array( 'default' => $field );
 
         if ( isset( $field[ 'group' ] ) && is_array( $field[ 'group' ] ) ) {
-            foreach ( $field[ 'group' ] as &$group_option ) {
-                $group_option = array_merge( $core_defaults, $group_option );
+            foreach ( $field[ 'group' ] as $g => $group_option ) {
+                $field[ 'group' ][ $g ] = array_merge( $core_defaults, $group_option );
             }
         }
 
@@ -473,7 +586,7 @@ class PodsForm {
 
         $regex = false;
 
-        if ( method_exists( self::$loaded[ $type ], 'validate' ) )
+        if ( method_exists( self::$loaded[ $type ], 'regex' ) )
             $regex = self::$loaded[ $type ]->regex( $options );
 
         $regex = apply_filters( 'pods_field_' . $type . '_regex', $regex, $options, $type );
@@ -497,7 +610,7 @@ class PodsForm {
 
         $prepare = '%s';
 
-        if ( method_exists( self::$loaded[ $type ], 'validate' ) )
+        if ( method_exists( self::$loaded[ $type ], 'prepare' ) )
             $prepare = self::$loaded[ $type ]->prepare( $options );
 
         $prepare = apply_filters( 'pods_field_' . $type . '_prepare', $prepare, $options, $type );
@@ -515,6 +628,7 @@ class PodsForm {
      * @param array $fields
      * @param array $pod
      * @param int $id
+     * @param array|object $params
      *
      * @static
      *
@@ -558,6 +672,82 @@ class PodsForm {
     }
 
     /**
+     * Check if a user has permission to be editing a field
+     *
+     * @param $type
+     * @param null $name
+     * @param null $options
+     * @param null $fields
+     * @param null $pod
+     * @param null $id
+     * @param null $params
+     *
+     * @static
+     *
+     * @since 2.0.0
+     */
+    public static function permission ( $type, $name = null, $options = null, $fields = null, $pod = null, $id = null, $params = null ) {
+        $permission = false;
+
+        if ( 1 == pods_var( 'restrict_capability', $options, 0 ) ) {
+            if ( is_user_logged_in() ) {
+                if ( is_super_admin() || current_user_can( 'manage_options' ) )
+                    $permission = true;
+
+                $capabilities = explode( ',', pods_var( 'capability_allowed', $options ) );
+                $capabilities = array_unique( array_filter( $capabilities ) );
+
+                foreach ( $capabilities as $capability ) {
+                    if ( current_user_can( $capability ) ) {
+                        $permission = true;
+
+                        break;
+                    }
+                }
+            }
+        }
+        elseif ( 1 == pods_var( 'admin_only', $options, 0 ) ) {
+            if ( is_user_logged_in() && ( is_super_admin() || current_user_can( 'manage_options' ) ) )
+                $permission = true;
+        }
+        else
+            $permission = true;
+
+        $permission = (boolean) apply_filters( 'pods_form_field_permission', $permission, $type, $name, $options, $fields, $pod, $id, $params );
+
+        return $permission;
+    }
+
+    /**
+     * Parse the default the value
+     *
+     * @since 2.0.0
+     */
+    public static function default_value ( $value, $type = 'text', $name = null, $options = null, $pod = null, $id = null ) {
+        $default_value = pods_var_raw( 'default_value', $options, $value, null, true );
+        $default_value_parameter = pods_var_raw( 'default_value_parameter', $options, $default_value, null, true );
+        $default = pods_var_raw( 'default', $options, $default_value_parameter, null, true );
+
+        $default = trim( $default, ' {@}' );
+
+        if ( $default != $value ) {
+            $value = $default;
+
+            $default = explode( '.', $default );
+
+            if ( 1 == count( $default ) )
+                $value = pods_var_raw( $default[ 0 ], 'get', '', null, true );
+            elseif ( 2 == count( $default ) )
+                $value = pods_var_raw( $default[ 1 ], $default[ 0 ], '', null, true );
+        }
+
+        if ( is_array( $value ) )
+            $value = pods_serial_comma( $value );
+
+        return apply_filters( 'pods_form_field_default_value', $value, $default, $type, $options, $pod, $id );
+    }
+
+    /**
      * Clean a value for use in class / id
      *
      * @since 2.0.0
@@ -586,8 +776,14 @@ class PodsForm {
      * @since 2.0.0
      */
     public static function field_loader ( $field_type ) {
-        if ( isset( self::$loaded[ $field_type ] ) )
+        if ( isset( self::$loaded[ $field_type ] ) ) {
+            $class_vars = get_class_vars( get_class( self::$loaded[ $field_type ] ) ); // PHP 5.2.x workaround
+
+            self::$field_group = ( isset( $class_vars[ 'group' ] ) ? $class_vars[ 'group' ] : '' );
+            self::$field_type = $class_vars[ 'type' ];
+
             return self::$loaded[ $field_type ];
+        }
 
         include_once PODS_DIR . 'classes/PodsField.php';
 
@@ -599,7 +795,7 @@ class PodsForm {
         if ( !class_exists( $class_name ) ) {
             $file = str_replace( '../', '', apply_filters( 'pods_form_field_include', PODS_DIR . 'classes/fields/' . basename( $field_type ) . '.php', $field_type ) );
 
-            if ( 0 === strpos( $file, untrailingslashit( ABSPATH ) ) && file_exists( $file ) )
+            if ( ( 0 === strpos( $file, untrailingslashit( WP_CONTENT_DIR ) ) || 0 === strpos( $file, untrailingslashit( ABSPATH ) ) ) && file_exists( $file ) )
                 include_once $file;
         }
 
@@ -611,7 +807,10 @@ class PodsForm {
         }
 
         $class_vars = get_class_vars( $class_name ); // PHP 5.2.x workaround
+
+        self::$field_group = ( isset( $class_vars[ 'group' ] ) ? $class_vars[ 'group' ] : '' );
         self::$field_type = $class_vars[ 'type' ];
+
         self::$loaded[ $field_type ] =& $class;
 
         return self::$loaded[ $field_type ];

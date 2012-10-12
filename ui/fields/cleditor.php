@@ -1,18 +1,19 @@
 <?php
-    $type = 'textarea';
-    $attributes = array();
-    $attributes = PodsForm::merge_attributes( $attributes, $name, PodsForm::$field_type, $options );
+wp_enqueue_script( 'pods-cleditor' );
+wp_enqueue_style( 'pods-cleditor' );
+
+$type = 'textarea';
+$attributes = array();
+$attributes[ 'tabindex' ] = 2;
+$attributes = PodsForm::merge_attributes( $attributes, $name, PodsForm::$field_type, $options, 'pods-ui-field-cleditor' );
 ?>
 <textarea<?php PodsForm::attributes( $attributes, $name, PodsForm::$field_type, $options ); ?>><?php echo esc_html( $value ); ?></textarea>
 <script>
-    jQuery( function( $ ) {
+    jQuery( function ( $ ) {
         var $textarea = $( 'textarea#<?php echo $attributes[ 'id' ]; ?>' );
-        if ( $textarea.data( 'width' ) ) {
-            $textarea.cleditor( {
-                width : $textarea.data( 'width' )
-            } );
-        }
-        else
-            $textarea.cleditor();
+        var editorWidth = $textarea.outerWidth();
+        $textarea.cleditor( {
+            width : editorWidth
+        } );
     } );
 </script>

@@ -1,5 +1,16 @@
 <?php
+/**
+ * @package Pods\Fields
+ */
 class PodsField_Paragraph extends PodsField {
+
+    /**
+     * Field Type Group
+     *
+     * @var string
+     * @since 2.0.0
+     */
+    public static $group = 'Paragraph';
 
     /**
      * Field Type Identifier
@@ -15,7 +26,7 @@ class PodsField_Paragraph extends PodsField {
      * @var string
      * @since 2.0.0
      */
-    public static $label = 'Paragraph Text';
+    public static $label = 'Plain Paragraph Text';
 
     /**
      * Field Type Preparation
@@ -37,44 +48,66 @@ class PodsField_Paragraph extends PodsField {
     /**
      * Add options and set defaults to
      *
-     * @param array $options
+     * @return array
      *
      * @since 2.0.0
      */
     public function options () {
         $options = array(
-            'paragraph_format_type' => array(
-                'label' => __( 'Format Type', 'pods' ),
-                'default' => 'plain',
-                'type' => 'pick',
-                'data' => array(
-                    'plain' => __( 'Plain Text Area', 'pods' ),
-                    __( 'WYSIWYG', 'pods' ) =>
-                        apply_filters(
-                            'pods_form_ui_field_paragraph_wysiwyg_options',
-                            array(
-                                'tinymce' => __( 'TinyMCE (WP Default)', 'pods' ),
-                                'cleditor' => __( 'CLEditor', 'pods' )
-                            )
-                        )
-                ),
-                'dependency' => true
-            ),
             'output_options' => array(
                 'label' => __( 'Output Options', 'pods' ),
-                'depends-on' => array( 'paragraph_format_type' => 'plain' ),
                 'group' => array(
-                    'paragraph_allow_shortcode' => array(
-                        'label' => __( 'Allow Shortcodes?', 'pods' ),
-                        'default' => 0,
-                        'type' => 'boolean',
-                        'dependency' => true
-                    ),
                     'paragraph_allow_html' => array(
                         'label' => __( 'Allow HTML?', 'pods' ),
                         'default' => 1,
                         'type' => 'boolean',
                         'dependency' => true
+                    ),
+                    'paragraph_oembed' => array(
+                        'label' => __( 'Enable oEmbed?', 'pods' ),
+                        'default' => 0,
+                        'type' => 'boolean',
+                        'help' => array(
+                            __( 'Embed videos, images, tweets, and other content.', 'pods' ),
+                            'http://codex.wordpress.org/Embeds'
+                        )
+                    ),
+                    'paragraph_wptexturize' => array(
+                        'label' => __( 'Enable wptexturize?', 'pods' ),
+                        'default' => 1,
+                        'type' => 'boolean',
+                        'help' => array(
+                            __( 'Transforms less-beautfiul text characters into stylized equivilents.', 'pods' ),
+                            'http://codex.wordpress.org/Function_Reference/wptexturize'
+                        )
+                    ),
+                    'paragraph_convert_chars' => array(
+                        'label' => __( 'Enable convert_chars?', 'pods' ),
+                        'default' => 1,
+                        'type' => 'boolean',
+                        'help' => array(
+                            __( 'Converts text into valid XHTML and Unicode', 'pods' ),
+                            'http://codex.wordpress.org/Function_Reference/convert_chars'
+                        )
+                    ),
+                    'paragraph_wpautop' => array(
+                        'label' => __( 'Enable wpautop?', 'pods' ),
+                        'default' => 1,
+                        'type' => 'boolean',
+                        'help' => array(
+                            __( 'Changes double line-breaks in the text into HTML paragraphs', 'pods' ),
+                            'http://codex.wordpress.org/Function_Reference/wpautop'
+                        )
+                    ),
+                    'paragraph_allow_shortcode' => array(
+                        'label' => __( 'Allow Shortcodes?', 'pods' ),
+                        'default' => 0,
+                        'type' => 'boolean',
+                        'dependency' => true,
+                        'help' => array(
+                            __( 'Embed [shortcodes] that help transform your static content into dynamic content.', 'pods' ),
+                            'http://codex.wordpress.org/Shortcode_API'
+                        )
                     )
                 )
             ),
@@ -88,7 +121,7 @@ class PodsField_Paragraph extends PodsField {
                 'label' => __( 'Maximum Length', 'pods' ),
                 'default' => 0,
                 'type' => 'number'
-            ),
+            )/*,
             'paragraph_size' => array(
                 'label' => __( 'Field Size', 'pods' ),
                 'default' => 'medium',
@@ -98,7 +131,7 @@ class PodsField_Paragraph extends PodsField {
                     'medium' => __( 'Medium', 'pods' ),
                     'large' => __( 'Large', 'pods' )
                 )
-            )
+            )*/
         );
 
         return $options;
@@ -124,15 +157,36 @@ class PodsField_Paragraph extends PodsField {
      * @param mixed $value
      * @param string $name
      * @param array $options
-     * @param array $fields
      * @param array $pod
      * @param int $id
      *
+     * @return mixed|null|string
      * @since 2.0.0
      */
     public function display ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
-        if ( 1 == pods_var( 'paragraph_allow_shortcode', $options ) )
+        $value = $this->strip_html( $value, $options );
+
+        if ( 1 == pods_var( 'wysiwyg_oembed', $options, 0 ) ) {
+            $embed = $GLOBALS[ 'wp_embed' ];
+            $value = $embed->run_shortcode( $value );
+            $value = $embed->autoembed( $value );
+        }
+
+        if ( 1 == pods_var( 'wysiwyg_wptexturize', $options, 1 ) )
+            $value = wptexturize( $value );
+
+        if ( 1 == pods_var( 'wysiwyg_convert_chars', $options, 1 ) )
+            $value = convert_chars( $value );
+
+        if ( 1 == pods_var( 'wysiwyg_wpautop', $options, 1 ) )
+            $value = wpautop( $value );
+
+        if ( 1 == pods_var( 'wysiwyg_allow_shortcode', $options, 0 ) ) {
+            if ( 1 == pods_var( 'wysiwyg_wpautop', $options, 1 ) )
+                $value = shortcode_unautop( $value );
+
             $value = do_shortcode( $value );
+        }
 
         return $value;
     }
@@ -154,51 +208,7 @@ class PodsField_Paragraph extends PodsField {
         if ( is_array( $value ) )
             $value = implode( "\n", $value );
 
-        if ( 'plain' == pods_var( 'paragraph_format_type', $options ) )
-            $field_type = 'textarea';
-        elseif ( 'tinymce' == pods_var( 'paragraph_format_type', $options ) )
-            $field_type = 'tinymce';
-        elseif ( 'cleditor' == pods_var( 'paragraph_format_type', $options ) )
-            $field_type = 'cleditor';
-        else {
-            // Support custom WYSIWYG integration
-            do_action( 'pods_form_ui_field_paragraph_wysiwyg_' . pods_var( 'paragraph_format_type', $options ), $name, $value, $options, $pod, $id );
-            do_action( 'pods_form_ui_field_paragraph_wysiwyg', pods_var( 'paragraph_format_type', $options ), $name, $value, $options, $pod, $id );
-            return;
-        }
-
-        pods_view( PODS_DIR . 'ui/fields/' . $field_type . '.php', compact( array_keys( get_defined_vars() ) ) );
-    }
-
-    /**
-     * Build regex necessary for JS validation
-     *
-     * @param mixed $value
-     * @param string $name
-     * @param array $options
-     * @param string $pod
-     * @param int $id
-     *
-     * @since 2.0.0
-     */
-    public function regex ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
-        return false;
-    }
-
-    /**
-     * Validate a value before it's saved
-     *
-     * @param mixed $value
-     * @param string $name
-     * @param array $options
-     * @param array $fields
-     * @param array $pod
-     * @param int $id
-     *
-     * @since 2.0.0
-     */
-    public function validate ( &$value, $name = null, $options = null, $fields = null, $pod = null, $id = null, $params = null ) {
-        return true;
+        pods_view( PODS_DIR . 'ui/fields/textarea.php', compact( array_keys( get_defined_vars() ) ) );
     }
 
     /**
@@ -212,67 +222,13 @@ class PodsField_Paragraph extends PodsField {
      * @param array $pod
      * @param object $params
      *
+     * @return mixed|string
      * @since 2.0.0
      */
     public function pre_save ( $value, $id = null, $name = null, $options = null, $fields = null, $pod = null, $params = null ) {
-        $options = (array) $options;
-
-        if ( 1 == pods_var( 'paragraph_allow_html', $options ) ) {
-            if ( 0 < strlen( pods_var( 'paragraph_allowed_html_tags', $options ) ) )
-                $value = strip_tags( $value, pods_var( 'paragraph_allowed_html_tags', $options ) );
-        }
-        else
-            $value = strip_tags( $value );
-
-        if ( 1 != pods_var( 'paragraph_allow_shortcode', $options ) )
-            $value = strip_shortcodes( $value );
+        $value = $this->strip_html( $value, $options );
 
         return $value;
-    }
-
-    /**
-     * Perform actions after saving to the DB
-     *
-     * @param mixed $value
-     * @param int $id
-     * @param string $name
-     * @param array $options
-     * @param array $fields
-     * @param array $pod
-     * @param object $params
-     *
-     * @since 2.0.0
-     */
-    public function post_save ( $value, $id = null, $name = null, $options = null, $fields = null, $pod = null, $params = null ) {
-
-    }
-
-    /**
-     * Perform actions before deleting from the DB
-     *
-     * @param string $name
-     * @param string $pod
-     * @param int $id
-     * @param object $api
-     *
-     * @since 2.0.0
-     */
-    public function pre_delete ( $id = null, $name = null, $options = null, $pod = null ) {
-
-    }
-
-    /**
-     * Perform actions after deleting from the DB
-     *
-     * @param int $id
-     * @param string $name
-     * @param array $options
-     * @param array $pod
-     *
-     * @since 2.0.0
-     */
-    public function post_delete ( $id = null, $name = null, $options = null, $pod = null ) {
-
     }
 
     /**
@@ -285,9 +241,42 @@ class PodsField_Paragraph extends PodsField {
      * @param array $fields
      * @param array $pod
      *
+     * @return mixed|string
      * @since 2.0.0
      */
-    public function ui ( $id, &$value, $name = null, $options = null, $fields = null, $pod = null ) {
+    public function ui ( $id, $value, $name = null, $options = null, $fields = null, $pod = null ) {
+        $value = $this->strip_html( $value, $options );
 
+        $value = wp_trim_words( $value );
+
+        return $value;
+    }
+
+    /**
+     * Strip HTML based on options
+     *
+     * @param string $value
+     * @param array $options
+     *
+     * @return string
+     */
+    public function strip_html ( $value, $options = null ) {
+        $options = (array) $options;
+
+        if ( 1 == pods_var( 'paragraph_allow_html', $options ) ) {
+            $allowed_html_tags = '';
+
+            if ( 0 < strlen( pods_var( 'paragraph_allowed_html_tags', $options ) ) ) {
+                $allowed_html_tags = explode( ' ', trim( pods_var( 'paragraph_allowed_html_tags', $options ) ) );
+                $allowed_html_tags = '<' . implode( '><', $allowed_html_tags ) . '>';
+            }
+
+            if ( !empty( $allowed_html_tags ) && '<>' != $allowed_html_tags )
+                $value = strip_tags( $value, $allowed_html_tags );
+        }
+        else
+            $value = strip_tags( $value );
+
+        return $value;
     }
 }

@@ -6,6 +6,9 @@
 // global $wp_editor;
 // $wp_editor->editor($content, $editor_id, $settings, $media_buttons);
 if ( !class_exists('WP_Pre_33_Editor') ) :
+/**
+ * @package Pods\Deprecated
+ */
 class WP_Pre_33_Editor {
 
 	var $editor_ids = array();
@@ -32,7 +35,7 @@ class WP_Pre_33_Editor {
 
 		$set = wp_parse_args( $settings,  array(
 			'wpautop' => true, // use wpautop?
-			'wp_buttons_css' => PODS_URL . '/deprecated/wp-editor/editor-buttons.css', // styles for both visual and HTML editors buttons
+			'wp_buttons_css' => PODS_URL . 'deprecated/wp-editor/editor-buttons.css', // styles for both visual and HTML editors buttons
 			'editor_class' => 'wp-editor-area',
 			'upload_link_title' => 'Upload and insert images or other media',
 			'media_buttons_context' => '',
@@ -71,8 +74,8 @@ class WP_Pre_33_Editor {
 					$tmce_class = 'active ';
 				}
 
-				$toolbar .= '<a id="' . $id . '-html" class="' . $html_class . 'hide-if-no-js wp-switch-editor" onclick="wpEditor.s(this);return false;">' . __('HTML') . "</a>\n";
-				$toolbar .= '<a id="' . $id . '-tmce" class="' . $tmce_class . 'hide-if-no-js wp-switch-editor" onclick="wpEditor.s(this);return false;">' . __('Visual') . "</a>\n";
+				$toolbar .= '<a id="' . $id . '-html" class="' . $html_class . 'hide-if-no-js wp-switch-editor" onclick="wpEditor.s(this);return false;">' . __( 'HTML', 'pods' ) . "</a>\n";
+				$toolbar .= '<a id="' . $id . '-tmce" class="' . $tmce_class . 'hide-if-no-js wp-switch-editor" onclick="wpEditor.s(this);return false;">' . __( 'Visual', 'pods' ) . "</a>\n";
 			}
 
 			if ( $media_buttons ) {

@@ -1,4 +1,7 @@
 <?php
+/**
+ * @package Pods\Fields
+ */
 class PodsField_Pick extends PodsField {
 
     /**
@@ -29,7 +32,7 @@ class PodsField_Pick extends PodsField {
     /**
      * Add options and set defaults to
      *
-     * @param array $options
+     * @return array
      *
      * @since 2.0.0
      */
@@ -84,35 +87,36 @@ class PodsField_Pick extends PodsField {
                 'depends-on' => array( 'pick_format_type' => 'multi' ),
                 'default' => 0,
                 'type' => 'number'
-            ),
+            ),/*
             'pick_display' => array(
                 'label' => __( 'Display Field in Selection List', 'pods' ),
                 'help' => __( 'You can use {@magic_tags} to reference field names on the related object.', 'pods' ),
                 'excludes-on' => array( 'pick_object' => 'custom-simple' ),
                 'default' => '{@name}',
                 'type' => 'text'
-            ),
+            ),*/
             'pick_where' => array(
-                'label' => __( '', 'pods' ),
+                'label' => __( 'Customized <em>WHERE</em>', 'pods' ),
                 'help' => __( 'help', 'pods' ),
                 'excludes-on' => array( 'pick_object' => 'custom-simple' ),
                 'default' => '',
                 'type' => 'text'
             ),
             'pick_orderby' => array(
-                'label' => __( '', 'pods' ),
+                'label' => __( 'Customized <em>ORDER BY</em>', 'pods' ),
                 'help' => __( 'help', 'pods' ),
                 'excludes-on' => array( 'pick_object' => 'custom-simple' ),
                 'default' => '',
                 'type' => 'text'
             ),
             'pick_groupby' => array(
-                'label' => __( '', 'pods' ),
+                'label' => __( 'Customized <em>GROUP BY</em>', 'pods' ),
                 'help' => __( 'help', 'pods' ),
                 'excludes-on' => array( 'pick_object' => 'custom-simple' ),
                 'default' => '',
                 'type' => 'text'
-            ),
+            )
+            /*,
             'pick_size' => array(
                 'label' => __( 'Field Size', 'pods' ),
                 'default' => 'medium',
@@ -122,7 +126,7 @@ class PodsField_Pick extends PodsField {
                     'medium' => __( 'Medium', 'pods' ),
                     'large' => __( 'Large', 'pods' )
                 )
-            )
+            )*/
         );
         return $options;
     }
@@ -137,6 +141,9 @@ class PodsField_Pick extends PodsField {
      */
     public function schema ( $options = null ) {
         $schema = false;
+
+        if ( 'custom-simple' == pods_var( 'pick_object', $options ) )
+            $schema = 'LONGTEXT';
 
         return $schema;
     }
@@ -154,7 +161,12 @@ class PodsField_Pick extends PodsField {
      * @since 2.0.0
      */
     public function display ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
-        return $value;
+        $fields = null;
+
+        if ( is_object( $pod ) && isset( $pod->fields ) )
+            $fields = $pod->fields;
+
+        return pods_serial_comma( $value, $name, $fields );
     }
 
     /**
@@ -177,55 +189,34 @@ class PodsField_Pick extends PodsField {
 
         $options[ 'table_info' ] = array();
 
-        $custom = pods_var( 'pick_custom', $options, false );
+        $custom = pods_var_raw( 'pick_custom', $options, false );
+
+        $ajax = false;
 
         if ( 'custom-simple' == pods_var( 'pick_object', $options ) && !empty( $custom ) ) {
-            if ( !is_array( $custom ) )
-                $custom = explode( "\n", $custom );
+            if ( !empty( $value ) && !is_array( $value ) ) {
+                $json = json_decode( $value, true );
 
-            $options[ 'data' ] = array();
-
-            foreach ( $custom as $custom_value ) {
-                $custom_label = explode( '|', $custom_value );
-
-                if ( empty( $custom_label ) )
-                    continue;
-
-                if ( 1 == count( $custom_label ) )
-                    $custom_label = $custom_value;
-                else {
-                    $custom_label = $custom_label[ 1 ];
-                    $custom_value = $custom_label[ 0 ];
-                }
-
-                $options[ 'data' ][ $custom_value ] = $custom_label;
+                if ( is_array( $json ) )
+                    $value = $json;
+                else
+                    $value = explode( ',', $value );
             }
         }
-        elseif ( '' != pods_var( 'pick_object', $options, '' ) && array() == pods_var( 'data', $options, array() ) ) {
-            $options[ 'data' ] = array( '' => __( '-- Select One --', 'pods' ) );
+        elseif ( '' != pods_var( 'pick_object', $options, '', null, true ) ) {
+            $autocomplete = false;
 
-            $options[ 'table_info' ] = pods_api()->get_table_info( pods_var( 'pick_object', $options ), pods_var( 'pick_val', $options ) );
+            if ( 'single' == pods_var( 'pick_format_type', $options ) && 'autocomplete' == pods_var( 'pick_format_single', $options ) )
+                $autocomplete = true;
+            elseif ( 'multi' == pods_var( 'pick_format_type', $options ) && 'autocomplete' == pods_var( 'pick_format_multi', $options ) )
+                $autocomplete = true;
 
-            $data = pods_data();
-            $data->table = $options[ 'table_info' ][ 'table' ];
-            $data->field_id = $options[ 'table_info' ][ 'field_id' ];
-            $data->field_index = $options[ 'table_info' ][ 'field_index' ];
+            $params[ 'limit' ] = -1;
 
-            $results = $data->select( array(
-                'select' => "`{$data->field_id}`, `{$data->field_index}`",
-                'table' => $data->table,
-                'identifier' => $data->field_id,
-                'index' => $data->field_index,
-                'where' => pods_var( 'pick_where', $options, null, null, true ),
-                'orderby' => pods_var( 'pick_orderby', $options, null, null, true ),
-                'groupby' => pods_var( 'pick_groupby', $options, null, null, true )
-            ) );
+            if ( $autocomplete )
+                $params[ 'limit' ] = apply_filters( 'pods_form_ui_field_pick_autocomplete_limit', 30, $name, $value, $options, $pod, $id );
 
-            foreach ( $results as $result ) {
-                $result = get_object_vars( $result );
-
-                $options[ 'data' ][ $result[ $data->field_id ] ] = $result[ $data->field_index ];
-            }
+            $ajax = true;
         }
 
         if ( 'single' == pods_var( 'pick_format_type', $options ) ) {
@@ -261,96 +252,121 @@ class PodsField_Pick extends PodsField {
     }
 
     /**
-     * Build regex necessary for JS validation
+     * Get the data from the field
      *
-     * @param mixed $value
-     * @param string $name
+     * @param string $name The name of the field
+     * @param string|array $value The value of the field
      * @param array $options
-     * @param string $pod
-     * @param int $id
-     *
-     * @since 2.0.0
-     */
-    public function regex ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
-        return false;
-    }
-
-    /**
-     * Validate a value before it's saved
-     *
-     * @param mixed $value
-     * @param string $name
-     * @param array $options
-     * @param array $fields
      * @param array $pod
      * @param int $id
      *
-     * @since 2.0.0
-     */
-    public function validate ( &$value, $name = null, $options = null, $fields = null, $pod = null, $id = null, $params = null ) {
-        return true;
-    }
-
-    /**
-     * Change the value or perform actions after validation but before saving to the DB
-     *
-     * @param mixed $value
-     * @param int $id
-     * @param string $name
-     * @param array $options
-     * @param array $fields
-     * @param array $pod
-     * @param object $params
+     * @return array Array of possible field data
      *
      * @since 2.0.0
      */
-    public function pre_save ( $value, $id = null, $name = null, $options = null, $fields = null, $pod = null, $params = null ) {
-        return $value;
-    }
 
-    /**
-     * Perform actions after saving to the DB
-     *
-     * @param mixed $value
-     * @param int $id
-     * @param string $name
-     * @param array $options
-     * @param array $fields
-     * @param array $pod
-     * @param object $params
-     *
-     * @since 2.0.0
-     */
-    public function post_save ( $value, $id = null, $name = null, $options = null, $fields = null, $pod = null, $params = null ) {
+    public function data ( $name, $value = null, $options = null, $pod = null, $id = null ) {
+        $data = array();
 
-    }
+        $custom = pods_var_raw( 'pick_custom', $options, false );
 
-    /**
-     * Perform actions before deleting from the DB
-     *
-     * @param int $id
-     * @param string $name
-     * @param array $options
-     * @param object $pod
-     *
-     * @since 2.0.0
-     */
-    public function pre_delete ( $id = null, $name = null, $options = null, $pod = null ) {
+        if ( 'custom-simple' == pods_var( 'pick_object', $options ) && !empty( $custom ) ) {
+            if ( !is_array( $custom ) )
+                $custom = explode( "\n", $custom );
 
-    }
+            if ( 'single' == pods_var( 'pick_format_type', $options ) && 'dropdown' == pods_var( 'pick_format_single', $options ) )
+                $options[ 'data' ] = array( '' => __( '-- Select One --', 'pods' ) );
 
-    /**
-     * Perform actions after deleting from the DB
-     *
-     * @param int $id
-     * @param string $name
-     * @param array $options
-     * @param object $pod
-     *
-     * @since 2.0.0
-     */
-    public function post_delete ( $id = null, $name = null, $options = null, $pod = null ) {
+            foreach ( $custom as $custom_value ) {
+                $custom_label = explode( '|', $custom_value );
 
+                if ( empty( $custom_label ) )
+                    continue;
+
+                if ( 1 == count( $custom_label ) )
+                    $custom_label = $custom_value;
+                else {
+                    $custom_value = $custom_label[ 0 ];
+                    $custom_label = $custom_label[ 1 ];
+                }
+
+                $data[ $custom_value ] = $custom_label;
+            }
+        }
+        elseif ( '' != pods_var( 'pick_object', $options, '' ) && array() == pods_var_raw( 'data', $options, array(), null, true ) ) {
+            if ( 'single' == pods_var( 'pick_format_type', $options ) && 'dropdown' == pods_var( 'pick_format_single', $options ) )
+                $data = array( '' => __( '-- Select One --', 'pods' ) );
+
+            $options[ 'table_info' ] = pods_api()->get_table_info( pods_var( 'pick_object', $options ), pods_var( 'pick_val', $options ) );
+
+            $search_data = pods_data();
+            $search_data->table = $options[ 'table_info' ][ 'table' ];
+            $search_data->join = $options[ 'table_info' ][ 'join' ];
+            $search_data->field_id = $options[ 'table_info' ][ 'field_id' ];
+            $search_data->field_index = $options[ 'table_info' ][ 'field_index' ];
+            $search_data->where = $options[ 'table_info' ][ 'where' ];
+            $search_data->orderby = $options[ 'table_info' ][ 'orderby' ];
+
+            if ( isset( $options[ 'table_info' ][ 'pod' ] ) && is_array( $options[ 'table_info' ][ 'pod' ] ) )
+                $search_data->fields = $options[ 'table_info' ][ 'pod' ][ 'fields' ];
+
+            $params = array(
+                'select' => "`t`.`{$search_data->field_id}`, `t`.`{$search_data->field_index}`",
+                'table' => $search_data->table,
+                'where' => pods_var_raw( 'pick_where', $options, null, null, true ),
+                'orderby' => pods_var_raw( 'pick_orderby', $options, null, null, true ),
+                'groupby' => pods_var_raw( 'pick_groupby', $options, null, null, true )
+            );
+
+            if ( isset( $options[ 'table_info' ][ 'pod' ] ) && !empty( $options[ 'table_info' ][ 'pod' ] ) ) {
+                $search_data->pod = $options[ 'table_info' ][ 'pod' ][ 'name' ];
+                $search_data->fields = $options[ 'table_info' ][ 'pod' ][ 'fields' ];
+            }
+
+            $autocomplete = false;
+
+            if ( 'single' == pods_var( 'pick_format_type', $options ) && 'autocomplete' == pods_var( 'pick_format_single', $options ) )
+                $autocomplete = true;
+            elseif ( 'multi' == pods_var( 'pick_format_type', $options ) && 'autocomplete' == pods_var( 'pick_format_multi', $options ) )
+                $autocomplete = true;
+
+            if ( $autocomplete )
+                $params[ 'limit' ] = apply_filters( 'pods_form_ui_field_pick_autocomplete_limit', 30, $name, $value, $options, $pod, $id );
+
+            $results = $search_data->select( $params );
+
+            if ( !empty( $results ) && ( !$autocomplete || $search_data->total_found() <= $params[ 'limit' ] ) ) {
+                foreach ( $results as $result ) {
+                    $result = get_object_vars( $result );
+
+                    $data[ $result[ $search_data->field_id ] ] = $result[ $search_data->field_index ];
+                }
+            }
+            elseif ( !empty( $value ) && $autocomplete && $params[ 'limit' ] < $search_data->total_found() ) {
+                $ids = $value;
+
+                if ( is_array( $ids ) )
+                    $ids = implode( ', ', $ids );
+
+                if ( !empty( $params[ 'where' ] ) )
+                    $params[ 'where' ] .= ' AND ';
+
+                $params[ 'where' ] .= "`t`.`{$search_data->field_id}` IN ( " . $ids . " )";
+
+                $results = $search_data->select( $params );
+
+                if ( !empty( $results ) ) {
+                    foreach ( $results as $result ) {
+                        $result = get_object_vars( $result );
+
+                        $data[ $result[ $search_data->field_id ] ] = $result[ $search_data->field_index ];
+                    }
+                }
+            }
+        }
+        if ( empty( $data ) && !empty( $options[ 'data' ] ) )
+            $data = $options[ 'data' ];
+        return $data;
     }
 
     /**
@@ -365,7 +381,7 @@ class PodsField_Pick extends PodsField {
      *
      * @since 2.0.0
      */
-    public function ui ( $id, &$value, $name = null, $options = null, $fields = null, $pod = null ) {
-
+    public function ui ( $id, $value, $name = null, $options = null, $fields = null, $pod = null ) {
+        return $this->display( $value, $name, $options, $pod, $id );
     }
 }

@@ -1,4 +1,7 @@
 <?php
+/**
+ * @package Pods\Deprecated
+ */
 ob_start();
 require_once(preg_replace("/wp-content.*/","wp-load.php",__FILE__));
 ob_end_clean();
@@ -18,34 +21,9 @@ if (!defined('PODS_STRICT_MODE') || !PODS_STRICT_MODE) {
 }
 
 $methods = array(
-    'save_pod' => array('priv' => 'manage_pods', 'format' => 'json'),
-    'save_column' => array('priv' => 'manage_pods'),
-    'save_template' => array('priv' => 'manage_templates'),
-    'save_page' => array('priv' => 'manage_pod_pages'),
-    'save_helper' => array('priv' => 'manage_helpers'),
-    'save_roles' => array('priv' => 'manage_roles'),
     'save_pod_item' => array('processor' => 'process_save_pod_item'),
-    'reorder_pod_item' => array('access_pod_specific' => true),
-    'drop_pod' => array('priv' => 'manage_pods'),
-    'drop_column' => array('priv' => 'manage_pods'),
-    'drop_template' => array('priv' => 'manage_templates'),
-    'drop_page' => array('priv' => 'manage_pod_pages'),
-    'drop_helper' => array('priv' => 'manage_helpers'),
-    'drop_pod_item' => array('access_pod_specific' => true),
-    'load_pod' => array('priv' => 'manage_pods', 'format' => 'json'),
-    'load_column' => array('priv' => 'manage_pods', 'format' => 'json'),
-    'load_template' => array('priv' => 'manage_templates', 'format' => 'json'),
-    'load_page' => array('priv' => 'manage_pod_pages', 'format' => 'json'),
-    'load_helper' => array('priv' => 'manage_helpers', 'format' => 'json'),
-    'load_sister_fields' => array('priv' => 'manage_pods', 'format' => 'json'),
     'load_pod_item' => array(),
     'load_files' => array(),
-    'export_package' => array('priv' => 'manage_packages', 'format' => 'json', 'safe' => true),
-    'import_package' => array('priv' => 'manage_packages'),
-    'validate_package' => array('priv' => 'manage_packages'),
-    'replace_package' => array('priv' => 'manage_packages'),
-    'security_settings' => array('priv' => 'manage_settings'),
-    'fix_wp_pod' => array('priv' => 'manage_settings')
 );
 
 $api = new PodAPI();
@@ -59,11 +37,7 @@ if (isset($methods[$action])) {
     $safe = isset($methods[$action]['safe']) ? $methods[$action]['safe'] : null;
     $access_pod_specific = isset($methods[$action]['access_pod_specific']) ? $methods[$action]['access_pod_specific'] : null;
 
-    if ('save_pod_item' == $action) {
-        if (isset($params->_wpnonce) && false === wp_verify_nonce($params->_wpnonce, 'pods-' . $action))
-            die('<e>Access denied');
-    }
-    elseif ((!isset($params->_wpnonce) || (false === wp_verify_nonce($params->_wpnonce, 'pods-' . $action) && false === wp_verify_nonce($params->_wpnonce, 'pods-multi'))))
+    if ((!isset($params->_wpnonce) || (false === wp_verify_nonce($params->_wpnonce, 'pods-' . $action) && false === wp_verify_nonce($params->_wpnonce, 'pods-multi'))))
         die('<e>Access denied');
 
     if ($access_pod_specific === true) {
@@ -128,7 +102,7 @@ if (isset($methods[$action])) {
 function process_save_pod_item ($params, $api) {
     $params = (object) $params;
 
-    $columns = pods_validate_key($params->token, $params->datatype, $params->uri_hash, null, $params->form_count);
+    $columns = pods_validate_key($params->token, $params->pod, $params->uri_hash, null, $params->form_count);
     if (false === $columns)
         die("<e>This form has expired. Please reload the page and ensure your session is still active.");
 
@@ -142,7 +116,7 @@ function process_save_pod_item ($params, $api) {
         }
     }
     else {
-        $tmp = $api->load_pod(array('name' => $params->datatype));
+        $tmp = $api->load_pod(array('name' => $params->pod));
         $columns = array();
         foreach ($tmp['fields'] as $field_data) {
             $column = $field_data['name'];

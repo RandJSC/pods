@@ -1,15 +1,16 @@
 <?php
-$pods_cache = PodCache::instance();
-$pods_cache->form_count++;
-$form_count = (int) $pods_cache->form_count;
+/*$pods_cache = PodCache::instance();
+$pods_cache->form_count++;*/
+$form_count = (int) 1;
 
 if (1 == $form_count)
 {
     do_action('pods_form_init', $this);
-    if (!wp_script_is('pods-ui', 'queue') && !wp_script_is('pods-ui', 'to_do') && !wp_script_is('pods-ui', 'done'))
-        wp_print_scripts('pods-ui');
+    wp_register_script( 'pods-ui-deprecated', PODS_URL . 'deprecated/js/pods.ui.js', array(), PODS_VERSION );
+    if (!wp_script_is('pods-ui-deprecated', 'queue') && !wp_script_is('pods-ui-deprecated', 'to_do') && !wp_script_is('pods-ui-deprecated', 'done'))
+        wp_print_scripts('pods-ui-deprecated');
 ?>
-<link rel="stylesheet" type="text/css" href="<?php echo PODS_URL; ?>/deprecated/style.css" />
+<link rel="stylesheet" type="text/css" href="<?php echo PODS_URL; ?>deprecated/style.css" />
 <script type="text/javascript">
 var active_file;
 
@@ -21,22 +22,11 @@ jQuery(function() {
     jQuery(".file .btn.dropme").live("click", function() {
         jQuery(this).parent().remove();
     });
-<?php
-    if (!(defined('PODS_DISABLE_FILE_BROWSER') && true === PODS_DISABLE_FILE_BROWSER) && !(defined('PODS_FILES_REQUIRE_LOGIN') && is_bool(PODS_FILES_REQUIRE_LOGIN) && true === PODS_FILES_REQUIRE_LOGIN && !is_user_logged_in()) && !(defined('PODS_FILES_REQUIRE_LOGIN') && !is_bool(PODS_FILES_REQUIRE_LOGIN) && (!is_user_logged_in() || !current_user_can(PODS_FILES_REQUIRE_LOGIN)))) {
-?>
-    jQuery(".file_match").live("click", function() {
-        var file_id = jQuery(this).attr("rel");
-        var file_name = jQuery(this).html();
-        jQuery(".rightside." + active_file + " .form").append('<div id="' + file_id + '" class="success"><div class="btn dropme"></div>' + file_name + '</div>');
-        jQuery("#dialog").jqmHide();
-    });
-<?php
-    }
-?>
+
     if ('undefined' != typeof(nicPaneOptions)) {
         var nicEditElements = jQuery(".form.desc");
         var config = {
-            iconsPath : "<?php echo PODS_URL; ?>/deprecated/images/nicEditorIcons.gif",
+            iconsPath : "<?php echo PODS_URL; ?>deprecated/images/nicEditorIcons.gif",
             buttonList : ['bold','italic','underline','fontFormat','left','center','right','justify','ol','ul','indent','outdent','image','link','unlink','xhtml']
         };
 
@@ -44,13 +34,6 @@ jQuery(function() {
             new nicEditor(config).panelInstance(nicEditElements[i].id);
         }
     }
-<?php
-    if (!(defined('PODS_DISABLE_FILE_BROWSER') && true === PODS_DISABLE_FILE_BROWSER) && !(defined('PODS_FILES_REQUIRE_LOGIN') && is_bool(PODS_FILES_REQUIRE_LOGIN) && true === PODS_FILES_REQUIRE_LOGIN && !is_user_logged_in()) && !(defined('PODS_FILES_REQUIRE_LOGIN') && !is_bool(PODS_FILES_REQUIRE_LOGIN) && (!is_user_logged_in() || !current_user_can(PODS_FILES_REQUIRE_LOGIN)))) {
-?>
-    jQuery("#dialog").jqm();
-<?php
-    }
-?>
 });
 
 function saveForm (form_count) {
@@ -97,7 +80,7 @@ function saveForm (form_count) {
 
     jQuery.ajax({
         type: "post",
-        url: "<?php echo PODS_URL; ?>/deprecated/ajax/api.php",
+        url: "<?php echo PODS_URL; ?>deprecated/ajax/api.php",
         data: "action=save_pod_item&_wpnonce=<?php echo wp_create_nonce('pods-save_pod_item'); ?>&"+data.join("&"),
         success: function(msg) {
             if (!is_error(msg)) {
@@ -108,25 +91,6 @@ function saveForm (form_count) {
     });
     return false;
 }
-<?php
-    if (!(defined('PODS_DISABLE_FILE_BROWSER') && true === PODS_DISABLE_FILE_BROWSER) && !(defined('PODS_FILES_REQUIRE_LOGIN') && is_bool(PODS_FILES_REQUIRE_LOGIN) && true === PODS_FILES_REQUIRE_LOGIN && !is_user_logged_in()) && !(defined('PODS_FILES_REQUIRE_LOGIN') && !is_bool(PODS_FILES_REQUIRE_LOGIN) && (!is_user_logged_in() || !current_user_can(PODS_FILES_REQUIRE_LOGIN)))) {
-?>
-function fileBrowser () {
-    jQuery("#dialog").jqmShow();
-    jQuery(".filebox").html("Loading...");
-    var search = jQuery("#file_search").val();
-    jQuery.ajax({
-        type: "post",
-        url: "<?php echo PODS_URL; ?>/deprecated/ajax/misc.php",
-        data: "action=browse_files&_wpnonce=<?php echo wp_create_nonce('pods-browse_files'); ?>&search="+encodeURIComponent(search),
-        success: function(msg) {
-            jQuery(".filebox").html(msg);
-        }
-    });
-}
-<?php
-    }
-?>
 </script>
 <?php
 }
@@ -138,19 +102,10 @@ do_action("pods_pre_form_{$this->pod}", $form_count, $this);
 
 <div class="pods_form form_<?php echo esc_attr($this->pod); ?> form_<?php echo $form_count; ?>">
 <?php
-if (1 == $form_count && !(defined('PODS_DISABLE_FILE_BROWSER') && true === PODS_DISABLE_FILE_BROWSER) && !(defined('PODS_FILES_REQUIRE_LOGIN') && is_bool(PODS_FILES_REQUIRE_LOGIN) && true === PODS_FILES_REQUIRE_LOGIN && !is_user_logged_in()) && !(defined('PODS_FILES_REQUIRE_LOGIN') && !is_bool(PODS_FILES_REQUIRE_LOGIN) && (!is_user_logged_in() || !current_user_can(PODS_FILES_REQUIRE_LOGIN)))) {
+$this->showform($this->get_field( $this->data->field_id ), $public_columns, $label);
 ?>
-<div class="jqmWindow" id="dialog">
-    <input type="text" id="file_search" value="" />
-    <input type="button" class="button" value="Narrow results" onclick="fileBrowser()" />
-    <div class="filebox"></div>
 </div>
 <?php
-}
-$this->showform($this->field($this->column_id), $public_columns, $label);
-?>
-</div>
-<?php 
 //post-form hooks
 do_action('pods_post_form', $form_count, $this);
 do_action("pods_post_form_{$this->pod}", $form_count, $this);

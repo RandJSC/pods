@@ -1,16 +1,41 @@
 <?php
+/**
+ * @package Pods\Upgrade
+ */
 class PodsUpgrade_2_0 {
 
+    /**
+     * @var array
+     */
     public $tables = array();
 
+    /**
+     * @var array
+     */
     private $progress = array();
 
+    /**
+     * @var PodsAPI
+     */
+    private $api = null;
+
+    /**
+     *
+     */
     function __construct () {
+        $this->api = pods_api();
+
         $this->get_tables();
         $this->get_progress();
     }
 
+    /**
+     *
+     */
     function get_tables () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         $tables = $wpdb->get_results( "SHOW TABLES LIKE '{$wpdb->prefix}pod%'", ARRAY_N );
@@ -22,16 +47,15 @@ class PodsUpgrade_2_0 {
         }
     }
 
+    /**
+     *
+     */
     function get_progress () {
         $methods = get_class_methods( $this );
 
         foreach ( $methods as $method ) {
-            if ( 0 === strpos( $method, 'migrate_' ) ) {
+            if ( 0 === strpos( $method, 'migrate_' ) )
                 $this->progress[ str_replace( 'migrate_', '', $method ) ] = false;
-
-                if ( 'migrate_pod' == $method )
-                    $this->progress[ str_replace( 'migrate_', '', $method ) ] = array();
-            }
         }
 
         $progress = (array) get_option( 'pods_framework_upgrade_2_0', array() );
@@ -40,7 +64,13 @@ class PodsUpgrade_2_0 {
             $this->progress = array_merge( $this->progress, $progress );
     }
 
+    /**
+     *
+     */
     function install () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         $pods_version = get_option( 'pods_version' );
@@ -68,7 +98,12 @@ class PodsUpgrade_2_0 {
         }
     }
 
-    function ajax ( $params ) {
+    /**
+     * @param $params
+     *
+     * @return mixed|void
+     */
+    public function ajax ( $params ) {
         if ( !isset( $params->step ) )
             return pods_error( __( 'Invalid upgrade process.', 'pods' ) );
 
@@ -81,7 +116,13 @@ class PodsUpgrade_2_0 {
         return call_user_func( array( $this, $params->step . '_' . $params->type ), $params );
     }
 
-    function prepare_pods () {
+    /**
+     * @return array|bool|int|mixed|null|void
+     */
+    public function prepare_pods () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         if ( !in_array( "{$wpdb->prefix}pod_types", $this->tables ) )
@@ -97,7 +138,13 @@ class PodsUpgrade_2_0 {
         return $count;
     }
 
-    function prepare_fields () {
+    /**
+     * @return array|bool|int|mixed|null|void
+     */
+    public function prepare_fields () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         if ( !in_array( "{$wpdb->prefix}pod_fields", $this->tables ) )
@@ -113,7 +160,13 @@ class PodsUpgrade_2_0 {
         return $count;
     }
 
-    function prepare_relationships () {
+    /**
+     * @return array|bool|int|mixed|null|void
+     */
+    public function prepare_relationships () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         if ( !in_array( "{$wpdb->prefix}pod_fields", $this->tables ) )
@@ -129,7 +182,13 @@ class PodsUpgrade_2_0 {
         return $count;
     }
 
-    function prepare_index () {
+    /**
+     * @return array|bool|int|mixed|null|void
+     */
+    public function prepare_index () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         if ( !in_array( "{$wpdb->prefix}pod", $this->tables ) )
@@ -145,7 +204,13 @@ class PodsUpgrade_2_0 {
         return $count;
     }
 
-    function prepare_templates () {
+    /**
+     * @return array|bool|int|mixed|null|void
+     */
+    public function prepare_templates () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         if ( !in_array( "{$wpdb->prefix}pod_templates", $this->tables ) )
@@ -161,7 +226,13 @@ class PodsUpgrade_2_0 {
         return $count;
     }
 
-    function prepare_pages () {
+    /**
+     * @return array|bool|int|mixed|null|void
+     */
+    public function prepare_pages () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         if ( !in_array( "{$wpdb->prefix}pod_pages", $this->tables ) )
@@ -177,7 +248,13 @@ class PodsUpgrade_2_0 {
         return $count;
     }
 
-    function prepare_helpers () {
+    /**
+     * @return array|bool|int|mixed|null|void
+     */
+    public function prepare_helpers () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         if ( !in_array( "{$wpdb->prefix}pod_helpers", $this->tables ) )
@@ -193,7 +270,15 @@ class PodsUpgrade_2_0 {
         return $count;
     }
 
-    function prepare_pod ( $params ) {
+    /**
+     * @param $params
+     *
+     * @return array|bool|int|mixed|null|void
+     */
+    public function prepare_pod ( $params ) {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         if ( !isset( $params->pod ) )
@@ -235,189 +320,302 @@ class PodsUpgrade_2_0 {
 
         foreach ( $columns as $column => $info ) {
             if ( !in_array( $column, $fields ) )
-                $errors[] = "<strong>{$column}</strong> " . __( 'is not a field in this pod.' );
+                $errors[] = "<strong>{$column}</strong> " . __( 'is a field in the table, but was not found in this pod - the field data will not be migrated.', 'pods' );
         }
 
         foreach ( $fields as $field ) {
             if ( !isset( $columns[ $field ] ) )
-                $errors[] = "<strong>{$field}</strong> " . __( 'was not found in the table.' );
+                $errors[] = "<strong>{$field}</strong> " . __( 'is a field in this pod, but was not found in the table - the field data will not be migrated.', 'pods' );
         }
 
         if ( !empty( $errors ) )
-            return pods_error( implode( ', ', $errors ) );
+            return pods_error( implode( '<br />', $errors ) );
 
         return $count;
     }
 
-    function migrate_pods () {
+    /**
+     *
+     */
+    public function migrate_1_x () {
+        $old_version = get_option( 'pods_version' );
+
+        if ( 0 < strlen( $old_version ) ) {
+            if ( false === strpos( $old_version, '.' ) )
+                $old_version = pods_version_to_point( $old_version );
+
+            // Last DB change was 1.11
+            if ( version_compare( $old_version, '1.11', '<' ) ) {
+                do_action( 'pods_update', PODS_VERSION, $old_version );
+
+                if ( false !== apply_filters( 'pods_update_run', null, PODS_VERSION, $old_version ) )
+                    include_once( PODS_DIR . 'sql/update-1.x.php' );
+
+                do_action( 'pods_update_post', PODS_VERSION, $old_version );
+            }
+        }
+
+        return '1';
+    }
+
+    /**
+     * @return array|string
+     */
+    public function migrate_pods () {
         if ( true === $this->check_progress( __FUNCTION__ ) )
             return '1';
 
-        $api = pods_api();
+        $sister_ids = (array) get_option( 'pods_framework_upgrade_2_0_sister_ids', array() );
 
-        $pod_types = pods_query( "SELECT * FROM `@wp_pod_types`", false );
+        $migration_limit = (int) apply_filters( 'pods_upgrade_pod_limit', 1 );
+        $migration_limit = max( $migration_limit, 1 );
 
-        $pod_ids = array();
+        $last_id = (int) $this->check_progress( __FUNCTION__ );
 
-        if ( empty( $pod_types ) )
-            return $pod_ids;
+        $sql = "
+            SELECT *
+            FROM `@wp_pod_types`
+            WHERE {$last_id} < `id`
+            ORDER BY `id`
+            LIMIT 0, {$migration_limit}
+        ";
 
-        foreach ( $pod_types as $pod_type ) {
-            $field_rows = pods_query( "SELECT * FROM `@wp_pod_fields` WHERE `datatype` = {$pod_type->id} ORDER BY `weight`, `name`" );
+        $pod_types = pods_query( $sql );
 
-            $fields = array(
-                array(
-                    'name' => 'name',
-                    'label' => 'Name',
-                    'type' => 'text',
-                    'weight' => 0,
-                    'options' => array(
-                        'required' => '1'
-                    )
-                ),
-                array(
-                    'name' => 'created',
-                    'label' => 'Date Created',
-                    'type' => 'date',
-                    'weight' => 1
-                ),
-                array(
-                    'name' => 'modified',
-                    'label' => 'Date Modified',
-                    'type' => 'date',
-                    'weight' => 2
-                ),
-                array(
-                    'name' => 'author',
-                    'label' => 'Author',
-                    'type' => 'pick',
-                    'pick_object' => 'user',
-                    'weight' => 3
-                )
-            );
+        $last_id = true;
 
-            $weight = 4;
+        if ( !empty( $pod_types ) ) {
+            foreach ( $pod_types as $pod_type ) {
+                $field_rows = pods_query( "SELECT * FROM `@wp_pod_fields` WHERE `datatype` = {$pod_type->id} ORDER BY `weight`, `name`" );
 
-            foreach ( $field_rows as $row ) {
-                if ( 'name' == $row->name )
-                    continue;
-
-                if ( in_array( $row->name, array( 'created', 'modified', 'author' ) ) )
-                    $row->name .= '2';
-
-                $field_type = $row->coltype;
-
-                if ( 'txt' == $field_type )
-                    $field_type = 'text';
-                elseif ( 'desc' == $field_type || 'code' == $field_type )
-                    $field_type = 'paragraph';
-                elseif ( 'bool' == $field_type )
-                    $field_type = 'boolean';
-                elseif ( 'num' == $field_type )
-                    $field_type = 'number';
-
-                $field_params = array(
-                    'name' => trim( $row->name ),
-                    'label' => trim( $row->label ),
-                    'type' => $field_type,
-                    'weight' => $weight,
-                    'options' => array(
-                        'required' => $row->required,
-                        'unique' => $row->unique,
-                        'input_helper' => $row->input_helper
+                $fields = array(
+                    array(
+                        'name' => 'name',
+                        'label' => 'Name',
+                        'type' => 'text',
+                        'weight' => 0,
+                        'options' => array(
+                            'required' => 1,
+                            'text_max_length' => 128
+                        )
+                    ),
+                    array(
+                        'name' => 'created',
+                        'label' => 'Date Created',
+                        'type' => 'datetime',
+                        'options' => array(
+                            'datetime_format' => 'ymd_slash',
+                            'datetime_time_type' => '12',
+                            'datetime_time_format' => 'h_mm_ss_A'
+                        ),
+                        'weight' => 1
+                    ),
+                    array(
+                        'name' => 'modified',
+                        'label' => 'Date Modified',
+                        'type' => 'datetime',
+                        'options' => array(
+                            'datetime_format' => 'ymd_slash',
+                            'datetime_time_type' => '12',
+                            'datetime_time_format' => 'h_mm_ss_A'
+                        ),
+                        'weight' => 2
+                    ),
+                    array(
+                        'name' => 'author',
+                        'label' => 'Author',
+                        'type' => 'pick',
+                        'pick_object' => 'user',
+                        'options' => array(
+                            'pick_format_type' => 'single',
+                            'pick_format_single' => 'autocomplete',
+                            'default_value' => '{@user.ID}'
+                        ),
+                        'weight' => 3
                     )
                 );
 
-                if ( 'pick' == $field_type ) {
-                    $field_params[ 'pick_object' ] = 'pod';
-                    $field_params[ 'pick_val' ] = $row->pickval;
+                $weight = 4;
 
-                    if ( 'wp_user' == $row->pickval ) {
-                        $field_params[ 'pick_object' ] = 'user';
-                        $field_params[ 'pick_val' ] = '';
-                    }
-                    elseif ( 'wp_post' == $row->pickval ) {
-                        $field_params[ 'pick_object' ] = 'post_type';
-                        $field_params[ 'pick_val' ] = 'post';
-                    }
-                    elseif ( 'wp_page' == $row->pickval ) {
-                        $field_params[ 'pick_object' ] = 'post_type';
-                        $field_params[ 'pick_val' ] = 'page';
-                    }
-                    elseif ( 'wp_taxonomy' == $row->pickval ) {
-                        $field_params[ 'pick_object' ] = 'taxonomy';
-                        $field_params[ 'pick_val' ] = 'category';
-                    }
+                foreach ( $field_rows as $row ) {
+                    if ( 'name' == $row->name )
+                        continue;
 
-                    $field_params[ 'sister_field_id' ] = $row->sister_field_id;
-                    $field_params[ 'pick_filter' ] = $row->pick_filter;
-                    $field_params[ 'pick_orderby' ] = $row->pick_orderby;
-                    $field_params[ 'pick_display' ] = '{@name}';
-                    $field_params[ 'pick_size' ] = 'medium';
+                    $old_name = $row->name;
 
-                    if ( 1 == $row->multiple ) {
-                        $field_params[ 'pick_format_type' ] = 'multi';
-                        $field_params[ 'pick_format_multi' ] = 'checkbox';
-                        $field_params[ 'pick_limit' ] = 0;
+                    $row->name = pods_clean_name( $row->name );
+
+                    if ( in_array( $row->name, array( 'type', 'created', 'modified', 'author' ) ) )
+                        $row->name .= '2';
+
+                    $field_type = $row->coltype;
+
+                    if ( 'txt' == $field_type )
+                        $field_type = 'text';
+                    elseif ( 'desc' == $field_type )
+                        $field_type = 'wysiwyg';
+                    elseif ( 'code' == $field_type )
+                        $field_type = 'paragraph';
+                    elseif ( 'bool' == $field_type )
+                        $field_type = 'boolean';
+                    elseif ( 'num' == $field_type )
+                        $field_type = 'number';
+                    elseif ( 'date' == $field_type )
+                        $field_type = 'datetime';
+
+                    $field_params = array(
+                        'name' => trim( $row->name ),
+                        'label' => trim( $row->label ),
+                        'description' => trim( $row->comment ),
+                        'type' => $field_type,
+                        'weight' => $weight,
+                        'options' => array(
+                            'required' => $row->required,
+                            'unique' => $row->unique,
+                            'input_helper' => $row->input_helper,
+                            '_pods_1x_field_name' => $old_name,
+                            '_pods_1x_field_id' => $row->id
+                        )
+                    );
+
+                    if ( 'pick' == $field_type ) {
+                        $field_params[ 'pick_object' ] = 'pod-' . $row->pickval;
+
+                        if ( 'wp_user' == $row->pickval )
+                            $field_params[ 'pick_object' ] = 'user';
+                        elseif ( 'wp_post' == $row->pickval )
+                            $field_params[ 'pick_object' ] = 'post_type-post';
+                        elseif ( 'wp_page' == $row->pickval )
+                            $field_params[ 'pick_object' ] = 'post_type-page';
+                        elseif ( 'wp_taxonomy' == $row->pickval )
+                            $field_params[ 'pick_object' ] = 'taxonomy-category';
+
+                        $field_params[ 'sister_id' ] = $row->sister_field_id;
+
+                        $sister_ids[ $row->id ] = $row->sister_field_id; // Old Sister Field ID
+                        $field_params[ 'options' ][ '_pods_1x_sister_id' ] = $row->sister_field_id;
+
+                        $field_params[ 'options' ][ 'pick_filter' ] = $row->pick_filter;
+                        $field_params[ 'options' ][ 'pick_orderby' ] = $row->pick_orderby;
+                        $field_params[ 'options' ][ 'pick_display' ] = '{@name}';
+                        $field_params[ 'options' ][ 'pick_size' ] = 'medium';
+
+                        if ( 1 == $row->multiple ) {
+                            $field_params[ 'options' ][ 'pick_format_type' ] = 'multi';
+                            $field_params[ 'options' ][ 'pick_format_multi' ] = 'checkbox';
+                            $field_params[ 'options' ][ 'pick_limit' ] = 0;
+                        }
+                        else {
+                            $field_params[ 'options' ][ 'pick_format_type' ] = 'single';
+                            $field_params[ 'options' ][ 'pick_format_single' ] = 'dropdown';
+                            $field_params[ 'options' ][ 'pick_limit' ] = 1;
+                        }
                     }
-                    else {
-                        $field_params[ 'pick_format_type' ] = 'single';
-                        $field_params[ 'pick_format_single' ] = 'dropdown';
-                        $field_params[ 'pick_limit' ] = 1;
+                    elseif ( 'file' == $field_type ) {
+                        $field_params[ 'options' ][ 'file_format_type' ] = 'multi';
+                        $field_params[ 'options' ][ 'file_type' ] = 'any';
                     }
+                    elseif ( 'number' == $field_type )
+                        $field_params[ 'options' ][ 'number_decimals' ] = 2;
+                    elseif ( 'desc' == $row->coltype )
+                        $field_params[ 'options' ][ 'wysiwyg_editor' ] = 'tinymce';
+                    elseif ( 'text' == $field_type )
+                        $field_params[ 'options' ][ 'text_max_length' ] = 128;
+
+                    $fields[] = $field_params;
+
+                    $weight++;
                 }
-                elseif ( 'number' == $field_type ) {
-                    $field_params[ 'number_format_type' ] = 'plain';
-                    $field_params[ 'number_decimals' ] = 2;
-                }
-                elseif ( 'desc' == $row->coltype )
-                    $field_params[ 'paragraph_format_type' ] = 'tinymce';
 
-                $fields[] = $field_params;
+                $pod_type->name = pods_sanitize( pods_clean_name( $pod_type->name ) );
 
-                $weight++;
+                $pod_params = array(
+                    'name' => $pod_type->name,
+                    'label' => $pod_type->label,
+                    'type' => 'pod',
+                    'storage' => 'table',
+                    'fields' => $fields,
+                    'options' => array(
+                        'pre_save_helpers' => $pod_type->pre_save_helpers,
+                        'post_save_helpers' => $pod_type->post_save_helpers,
+                        'pre_delete_helpers' => $pod_type->pre_drop_helpers,
+                        'post_delete_helpers' => $pod_type->post_drop_helpers,
+                        'show_in_menu' => $pod_type->is_toplevel,
+                        'detail_url' => $pod_type->detail_page,
+                        'pod_index' => 'name',
+                        '_pods_1x_pod_id' => $pod_type->id
+                    ),
+                );
+
+                if ( empty( $pod_params[ 'label' ] ) )
+                    $pod_params[ 'label' ] = ucwords( str_replace( '_', ' ', $pod_params[ 'name' ] ) );
+
+                $pod_id = $this->api->save_pod( $pod_params );
+
+                if ( 0 < $pod_id )
+                    $last_id = $pod_type->id;
+                else
+                    pods_error( 'Error: ' . $pod_id );
             }
-
-            $pod_type->name = pods_sanitize( pods_clean_name( $pod_type->name ) );
-
-            $pod_params = array(
-                'name' => $pod_type->name,
-                'label' => $pod_type->label,
-                'type' => 'pod',
-                'storage' => 'table',
-                'fields' => $fields,
-                'options' => array(
-                    'pre_save_helpers' => $pod_type->pre_save_helpers,
-                    'post_save_helpers' => $pod_type->post_save_helpers,
-                    'pre_delete_helpers' => $pod_type->pre_drop_helpers,
-                    'post_delete_helpers' => $pod_type->post_drop_helpers,
-                    'show_in_menu' => $pod_type->is_toplevel,
-                    'detail_url' => $pod_type->detail_page,
-                ),
-            );
-
-            $pod_id = $api->save_pod( $pod_params );
-            $pod_ids[] = $pod_id;
         }
 
-        $this->get_tables();
+        update_option( 'pods_framework_upgrade_2_0_sister_ids', $sister_ids );
+
+        $this->update_progress( __FUNCTION__, $last_id );
+
+        if ( $migration_limit == count( $pod_types ) )
+            return '-2';
+        else
+            return '1';
+    }
+
+    /**
+     * @return string
+     */
+    public function migrate_fields () {
+        if ( true === $this->check_progress( __FUNCTION__ ) )
+            return '1';
+
+        $sister_ids = (array) get_option( 'pods_framework_upgrade_2_0_sister_ids', array() );
+
+        foreach ( $sister_ids as $old_field_id => $old_sister_id ) {
+            $old_field_id = (int) $old_field_id;
+            $old_sister_id = (int) $old_sister_id;
+
+            $new_field_id = pods_query( "SELECT `post_id` FROM `@wp_postmeta` WHERE `meta_key` = '_pods_1x_field_id' AND `meta_value` = '{$old_field_id}' LIMIT 1" );
+
+            if ( !empty( $new_field_id ) ) {
+                $new_field_id = (int) $new_field_id[ 0 ]->post_id;
+
+                $new_sister_id = pods_query( "SELECT `post_id` FROM `@wp_postmeta` WHERE `meta_key` = '_pods_1x_field_id' AND `meta_value` = '{$old_sister_id}' LIMIT 1" );
+
+                if ( !empty( $new_sister_id ) ) {
+                    $new_sister_id = (int) $new_sister_id[ 0 ]->post_id;
+
+                    update_post_meta( $new_field_id, 'sister_id', $new_sister_id );
+                }
+                else
+                    delete_post_meta( $new_field_id, 'sister_id' );
+            }
+        }
+
+        // We were off the grid, so let's flush and allow for resync
+        $this->api->cache_flush_pods();
 
         $this->update_progress( __FUNCTION__, true );
 
         return '1';
     }
 
-    function migrate_fields () {
-        return '1';
-    }
-
-    function migrate_relationships () {
+    /**
+     * @return string
+     */
+    public function migrate_relationships () {
         if ( true === $this->check_progress( __FUNCTION__ ) )
             return '1';
 
-        global $wpdb;
-
-        $api = pods_api();
+        $migration_limit = (int) apply_filters( 'pods_upgrade_item_limit', 1500 );
+        $migration_limit = max( $migration_limit, 100 );
 
         $last_id = (int) $this->check_progress( __FUNCTION__ );
 
@@ -430,7 +628,7 @@ class PodsUpgrade_2_0 {
                 AND `r`.`field_id` IS NOT NULL
                 AND `p`.`id` IS NOT NULL
             ORDER BY `r`.`id`
-            LIMIT 0, 800
+            LIMIT 0, {$migration_limit}
         ";
 
         $rel = pods_query( $sql );
@@ -445,11 +643,17 @@ class PodsUpgrade_2_0 {
 
         if ( !empty( $rel ) && !empty( $pod_types ) ) {
             foreach ( $pod_types as $type ) {
-                $types[ $type->id ] = $api->load_pod( array( 'name' => $type->name ) );
+                $types[ $type->id ] = $this->api->load_pod( array( 'name' => $type->name ) );
 
                 $pod_fields = pods_query( "SELECT `id`, `name` FROM `@wp_pod_fields` WHERE `datatype` = {$type->id} ORDER BY `id`" );
 
+                $types[ $type->id ][ 'old_fields' ] = array();
+
                 foreach ( $pod_fields as $field ) {
+                    // Handle name changes
+                    if ( in_array( $field->name, array( 'type', 'created', 'modified', 'author' ) ) )
+                        $field->name .= '2';
+
                     $types[ $type->id ][ 'old_fields' ][ $field->id ] = $field->name;
                 }
             }
@@ -477,12 +681,14 @@ class PodsUpgrade_2_0 {
                 $related_item_id = $r->tbl_row_id;
 
                 if ( 'pick' == $field[ 'type' ] ) {
-                    if ( 0 < (int) $field[ 'sister_field_id' ] ) {
+                    $old_sister_id = (int) pods_var( '_pods_1x_sister_id', $field[ 'options' ], 0 );
+
+                    if ( 0 < $old_sister_id ) {
                         $sql = "
                             SELECT `f`.`id`, `f`.`name`, `t`.`name` AS `pod`
                             FROM `@wp_pod_fields` AS `f`
                             LEFT JOIN `@wp_pod_types` AS `t` ON `t`.`id` = `f`.`datatype`
-                            WHERE `f`.`id` = " . (int) $field[ 'sister_field_id' ] . " AND `t`.`id` IS NOT NULL
+                            WHERE `f`.`id` = " . $old_sister_id . " AND `t`.`id` IS NOT NULL
                             ORDER BY `f`.`id`
                             LIMIT 1
                         ";
@@ -494,7 +700,7 @@ class PodsUpgrade_2_0 {
 
                         $old_field = $old_field[ 0 ];
 
-                        $related_field = $api->load_field( array( 'name' => $old_field->name, 'pod' => $old_field->pod ) );
+                        $related_field = $this->api->load_field( array( 'name' => $old_field->name, 'pod' => $old_field->pod ) );
 
                         if ( empty( $related_field ) )
                             continue;
@@ -503,7 +709,7 @@ class PodsUpgrade_2_0 {
                         $related_field_id = $related_field[ 'id' ];
                     }
                     elseif ( 'pod' == $field[ 'pick_object' ] && 0 < strlen( $field[ 'pick_val' ] ) ) {
-                        $related_pod = $api->load_pod( array( 'name' => $field[ 'pick_val' ] ), false );
+                        $related_pod = $this->api->load_pod( array( 'name' => $field[ 'pick_val' ] ), false );
 
                         if ( empty( $related_pod ) )
                             continue;
@@ -521,11 +727,20 @@ class PodsUpgrade_2_0 {
                 $related_item_id = (int) $related_item_id;
                 $r->weight = (int) $r->weight;
 
-                $sql = "
-                    REPLACE INTO `@wp_pods_rel`
-                    ( `id`, `pod_id`, `field_id`, `item_id`, `related_pod_id`, `related_field_id`, `related_item_id`, `weight` )
-                    VALUES ( {$r->id}, {$pod_id}, {$field_id}, {$item_id}, {$related_pod_id}, {$related_field_id}, {$related_item_id}, {$r->weight} )
-                ";
+                $table_data = array(
+                    'id' => $r->id,
+                    'pod_id' => $pod_id,
+                    'field_id' => $field_id,
+                    'item_id' => $item_id,
+                    'related_pod_id' => $related_pod_id,
+                    'related_field_id' => $related_field_id,
+                    'related_item_id' => $related_item_id,
+                    'weight' => $r->weight,
+                );
+
+                $table_formats = array_fill( 0, count( $table_data ), '%d' );
+
+                $sql = PodsData::insert_on_duplicate( "@wp_podsrel", $table_data, $table_formats );
 
                 pods_query( $sql );
 
@@ -543,20 +758,29 @@ class PodsUpgrade_2_0 {
 
         $this->update_progress( __FUNCTION__, $last_id );
 
-        if ( 800 == count( $rel ) )
-            echo '-2';
+        if ( $migration_limit == count( $rel ) )
+            return '-2';
         else
-            echo '1';
+            return '1';
     }
 
-    function migrate_settings () {
+    /**
+     * @return string
+     */
+    public function migrate_settings () {
         return $this->migrate_roles();
     }
 
-    function migrate_roles () {
+    /**
+     * @return string
+     */
+    public function migrate_roles () {
         if ( true === $this->check_progress( __FUNCTION__ ) )
             return '1';
 
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         $wp_roles = get_option( "{$wpdb->prefix}user_roles" );
@@ -604,26 +828,23 @@ class PodsUpgrade_2_0 {
         return '1';
     }
 
-    function migrate_templates () {
+    /**
+     * @return array|string
+     */
+    public function migrate_templates () {
         if ( true === $this->check_progress( __FUNCTION__ ) )
             return '1';
-
-        $api = pods_api();
 
         $templates = pods_query( "SELECT * FROM `@wp_pod_templates`", false );
 
         $results = array();
 
-        if ( empty( $templates ) )
-            return $results;
+        if ( !empty( $templates ) ) {
+            foreach ( $templates as $template ) {
+                unset( $template->id );
 
-        foreach ( $templates as $template ) {
-            $params = array(
-                'name' => $template->name,
-                'code' => $template->code,
-            );
-
-            $results[] = $api->save_template( $params );
+                $results[] = $this->api->save_template( $template );
+            }
         }
 
         $this->update_progress( __FUNCTION__, true );
@@ -631,21 +852,21 @@ class PodsUpgrade_2_0 {
         return '1';
     }
 
-    function migrate_pages () {
+    /**
+     * @return array|string
+     */
+    public function migrate_pages () {
         if ( true === $this->check_progress( __FUNCTION__ ) )
             return '1';
-
-        $api = pods_api();
 
         $pages = pods_query( "SELECT * FROM `@wp_pod_pages`", false );
 
-        $results = array();
+        if ( !empty( $pages ) ) {
+            foreach ( $pages as $page ) {
+                unset( $page->id );
 
-        if ( empty( $pages ) )
-            return $results;
-
-        foreach ( $pages as $page ) {
-            $results[] = $api->save_page( $page );
+                $this->api->save_page( $page );
+            }
         }
 
         $this->update_progress( __FUNCTION__, true );
@@ -653,35 +874,48 @@ class PodsUpgrade_2_0 {
         return '1';
     }
 
-    function migrate_helpers () {
+    /**
+     * @return array|string
+     */
+    public function migrate_helpers () {
         if ( true === $this->check_progress( __FUNCTION__ ) )
             return '1';
 
-        $api = pods_api();
-
         $helpers = pods_query( "SELECT * FROM `@wp_pod_helpers`", false );
 
-        $results = array();
+        $notice = false;
 
-        if ( empty( $helpers ) )
-            return $results;
+        if ( !empty( $helpers ) ) {
+            foreach ( $helpers as $helper ) {
+                unset( $helper->id );
 
-        foreach ( $helpers as $helper ) {
-            $params = array(
-                'name' => $helper->name,
-                'helper_type' => $helper->helper_type,
-                'phpcode' => $helper->phpcode,
-            );
+                if ( 'input' == $helper->helper_type ) {
+                    $helper->status = 'draft';
 
-            $results[] = $api->save_helper( $params );
+                    $notice = true;
+                }
+
+                $this->api->save_helper( $helper );
+            }
         }
 
         $this->update_progress( __FUNCTION__, true );
 
+        if ( $notice )
+            return pods_error( __( 'Input Helpers may not function in our new forms, we have imported and disabled them for your review.', 'pods' ) );
+
         return '1';
     }
 
-    function migrate_pod ( $params ) {
+    /**
+     * @param $params
+     *
+     * @return mixed|string|void
+     */
+    public function migrate_pod ( $params ) {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
         if ( !isset( $params->pod ) )
@@ -692,7 +926,7 @@ class PodsUpgrade_2_0 {
         if ( !in_array( "{$wpdb->prefix}pod_tbl_{$pod}", $this->tables ) )
             return pods_error( __( 'Table not found, items cannot be migrated', 'pods' ) );
 
-        if ( !in_array( "{$wpdb->prefix}pods_tbl_{$pod}", $this->tables ) )
+        if ( !in_array( "{$wpdb->prefix}pods_{$pod}", $this->tables ) )
             return pods_error( __( 'New table not found, items cannot be migrated', 'pods' ) );
 
         if ( !in_array( "{$wpdb->prefix}pod_types", $this->tables ) )
@@ -704,29 +938,32 @@ class PodsUpgrade_2_0 {
         if ( true === $this->check_progress( __FUNCTION__, $pod ) )
             return '1';
 
-        $pod_data = pods_api()->load_pod( array( 'name' => $pod ) );
+        $pod_data = $this->api->load_pod( array( 'name' => $pod ) );
 
         if ( empty( $pod_data ) )
             return pods_error( __( 'Pod not found, items cannot be migrated', 'pods' ) );
 
         $columns = array();
+        $old_columns = array();
 
         foreach ( $pod_data[ 'fields' ] as $field ) {
-            if ( !in_array( $field[ 'name' ], array( 'created', 'modified', 'author' ) ) && !in_array( $field[ 'type' ], array( 'file', 'pick' ) ) )
+            if ( !in_array( $field[ 'name' ], array( 'created', 'modified', 'author' ) ) && !in_array( $field[ 'type' ], array( 'file', 'pick' ) ) ) {
                 $columns[] = pods_sanitize( $field[ 'name' ] );
+                $old_columns[] = pods_var( '_pods_1x_field_name', $field[ 'options' ], $field[ 'name' ], null, false );
+            }
         }
 
-        $select = '`t`.`id`';
         $into = '`id`';
+        $select = '`t`.`id`';
 
         if ( !empty( $columns ) ) {
-            $select .= ', `t`.`' . implode( '`, `t`.`', $columns ) . '`';
             $into .= ', `' . implode( '`, `', $columns ) . '`';
+            $select .= ', `t`.`' . implode( '`, `t`.`', $old_columns ) . '`';
         }
 
         // Copy content from the old table into the new
         $sql = "
-            REPLACE INTO `@wp_pods_tbl_{$pod}`
+            REPLACE INTO `@wp_pods_{$pod}`
                 ( {$into} )
                 ( SELECT {$select}
                   FROM `@wp_pod_tbl_{$pod}` AS `t` )
@@ -736,7 +973,7 @@ class PodsUpgrade_2_0 {
 
         // Copy index data from the old index table into the new individual table
         $sql = "
-            UPDATE `@wp_pods_tbl_{$pod}` AS `t`
+            UPDATE `@wp_pods_{$pod}` AS `t`
             LEFT JOIN `@wp_pod_types` AS `x` ON `x`.`name` = '{$pod}'
             LEFT JOIN `@wp_pod` AS `p` ON `p`.`datatype` = `x`.`id` AND `p`.`tbl_row_id` = `t`.`id`
             SET `t`.`created` = `p`.`created`, `t`.`modified` = `p`.`modified`
@@ -747,7 +984,7 @@ class PodsUpgrade_2_0 {
 
         // Copy name data from the old index table into the new individual table (if name empty in indiv table)
         $sql = "
-            UPDATE `@wp_pods_tbl_{$pod}` AS `t`
+            UPDATE `@wp_pods_{$pod}` AS `t`
             LEFT JOIN `@wp_pod_types` AS `x` ON `x`.`name` = '{$pod}'
             LEFT JOIN `@wp_pod` AS `p` ON `p`.`datatype` = `x`.`id` AND `p`.`tbl_row_id` = `t`.`id`
             SET `t`.`name` = `p`.`name`
@@ -761,27 +998,56 @@ class PodsUpgrade_2_0 {
         return '1';
     }
 
-    function migrate_cleanup () {
+    /**
+     * @return string
+     */
+    public function migrate_cleanup () {
         update_option( 'pods_framework_upgraded_1_x', 1 );
+
+        $oldget = $_GET;
+
+        $_GET[ 'toggle' ] = 1;
+
+        PodsInit::$components->toggle( 'templates' );
+        PodsInit::$components->toggle( 'pages' );
+        PodsInit::$components->toggle( 'helpers' );
+
+        $_GET = $oldget;
+
+        $this->api->cache_flush_pods();
 
         return '1';
     }
 
-    function restart () {
+    /**
+     *
+     */
+    public function restart () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
-        foreach ( $this->table as $table ) {
+        foreach ( $this->tables as $table ) {
             if ( false !== strpos( $table, "{$wpdb->prefix}pods" ) )
                 pods_query( "TRUNCATE `{$table}`", false );
         }
 
         delete_option( 'pods_framework_upgrade_2_0' );
+        delete_option( 'pods_framework_upgrade_2_0_sister_ids' );
+        delete_option( 'pods_framework_upgraded_1_x' );
     }
 
-    function cleanup () {
+    /**
+     *
+     */
+    public function cleanup () {
+        /**
+         * @var $wpdb WPDB
+         */
         global $wpdb;
 
-        foreach ( $this->table as $table ) {
+        foreach ( $this->tables as $table ) {
             if ( false !== strpos( $table, "{$wpdb->prefix}pod_" ) || "{$wpdb->prefix}pod" == $table )
                 pods_query( "DROP TABLE `{$table}`", false );
         }
@@ -789,20 +1055,30 @@ class PodsUpgrade_2_0 {
         delete_option( 'pods_roles' );
         delete_option( 'pods_version' );
         delete_option( 'pods_framework_upgrade_2_0' );
+        delete_option( 'pods_framework_upgrade_2_0_sister_ids' );
+        delete_option( 'pods_framework_upgraded_1_x' );
 
-        /*
-         * other options maybe not in 2.0
         delete_option( 'pods_disable_file_browser' );
         delete_option( 'pods_files_require_login' );
         delete_option( 'pods_files_require_login_cap' );
         delete_option( 'pods_disable_file_upload' );
         delete_option( 'pods_upload_require_login' );
         delete_option( 'pods_upload_require_login_cap' );
+
+        pods_query( "DELETE FROM `@wp_postmeta` WHERE `meta_key` LIKE '_pods_1x_%'" );
+
+        /*
+         * other options maybe not in 2.0
         delete_option( 'pods_page_precode_timing' );
         */
     }
 
-    function update_progress ( $method, $v, $x = null ) {
+    /**
+     * @param $method
+     * @param $v
+     * @param null $x
+     */
+    public function update_progress ( $method, $v, $x = null ) {
         $method = str_replace( 'migrate_', '', $method );
 
         if ( null !== $x )
@@ -813,7 +1089,13 @@ class PodsUpgrade_2_0 {
         update_option( 'pods_framework_upgrade_2_0', $this->progress );
     }
 
-    function check_progress ( $method, $x = null ) {
+    /**
+     * @param $method
+     * @param null $x
+     *
+     * @return bool
+     */
+    public function check_progress ( $method, $x = null ) {
         $method = str_replace( 'migrate_', '', $method );
 
         if ( isset( $this->progress[ $method ] ) ) {

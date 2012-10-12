@@ -1,4 +1,9 @@
 <?php
+/**
+ * Component managing class
+ *
+ * @package Pods
+ */
 class PodsComponents {
 
     /**
@@ -16,7 +21,6 @@ class PodsComponents {
      *
      * @var string
      *
-     * @private
      * @since 2.0.0
      */
     public $components = array();
@@ -26,7 +30,6 @@ class PodsComponents {
      *
      * @var string
      *
-     * @private
      * @since 2.0.0
      */
     public $settings = array();
@@ -47,11 +50,11 @@ class PodsComponents {
         if ( !isset( $this->settings[ 'components' ] ) )
             $this->settings[ 'components' ] = array();
 
-        // Get components
-        add_action( 'after_setup_theme', array( $this, 'get_components' ), 11 );
+        // Get components (give it access to theme)
+        add_action( 'setup_theme', array( $this, 'get_components' ), 11 );
 
         // Load in components
-        add_action( 'after_setup_theme', array( $this, 'load' ), 12 );
+        add_action( 'setup_theme', array( $this, 'load' ), 12 );
 
         // AJAX handling
         if ( is_admin() ) {
@@ -63,27 +66,82 @@ class PodsComponents {
     /**
      * Add menu item
      *
+     * @param string $parent The parent slug.
+     *
      * @since 2.0.0
+     *
+     * @uses add_submenu_page
      */
     public function menu ( $parent ) {
+        global $submenu;
+
+        $custom_component_menus = array();
+
         foreach ( $this->components as $component => $component_data ) {
+            if ( !isset( $this->settings[ 'components' ][ $component_data[ 'ID' ] ] ) || 0 == $this->settings[ 'components' ][ $component_data[ 'ID' ] ] )
+                continue;
+
             if ( !empty( $component_data[ 'Hide' ] ) )
                 continue;
 
-            if ( pods_var( 'DeveloperMode', $component_data, false ) && ( !defined( 'PODS_DEVELOPER' ) || !PODS_DEVELOPER ) )
+            if ( true === (boolean) pods_var( 'DeveloperMode', $component_data, false ) && ( !defined( 'PODS_DEVELOPER' ) || !PODS_DEVELOPER ) )
                 continue;
 
-            if ( !isset( $component_data[ 'object' ] ) || !method_exists( $component_data[ 'object' ], 'admin' ) )
+            if ( empty( $component_data[ 'MenuPage' ] ) && ( !isset( $component_data[ 'object' ] ) || !method_exists( $component_data[ 'object' ], 'admin' ) ) )
                 continue;
 
-            add_submenu_page(
+            $component_data[ 'File' ] = realpath( PODS_DIR . $component_data[ 'File' ] );
+
+            if ( !file_exists( $component_data[ 'File' ] ) ) {
+                pods_message( 'Pods Component not found: ' . $component_data[ 'File' ] );
+
+                pods_transient_clear( 'pods_components' );
+
+                continue;
+            }
+
+            $menu_page = 'pods-component-' . $component_data[ 'ID' ];
+
+            if ( !empty( $component_data[ 'MenuPage' ] ) )
+                $custom_component_menus[ $menu_page ] = $component_data;
+
+            $page = add_submenu_page(
                 $parent,
                 strip_tags( $component_data[ 'Name' ] ),
                 '- ' . strip_tags( $component_data[ 'MenuName' ] ),
                 'read',
-                'pods-component-' . $component_data[ 'ID' ],
+                $menu_page,
                 array( $this, 'admin_handler' )
             );
+
+            if ( isset( $component_data[ 'object' ] ) && method_exists( $component_data[ 'object' ], 'admin_assets' ) )
+                add_action( 'admin_print_styles-' . $page, array( $component_data[ 'object' ], 'admin_assets' ) );
+        }
+
+        if ( !empty( $custom_component_menus ) ) {
+            foreach ( $custom_component_menus as $menu_page => $component_data ) {
+                if ( isset( $submenu[ $parent ] ) ) {
+                    foreach ( $submenu[ $parent ] as $sub => &$menu ) {
+                        if ( $menu[ 2 ] == $menu_page ) {
+                            $menu_page = $component_data[ 'MenuPage' ];
+
+                            if ( !empty( $component_data[ 'MenuAddPage' ] ) ) {
+                                if ( false !== strpos( $_SERVER[ 'REQUEST_URI' ], $component_data[ 'MenuAddPage' ] ) )
+                                    $menu_page = $component_data[ 'MenuAddPage' ];
+                            }
+
+                            $menu[ 2 ] = $menu_page;
+
+                            $page = current( explode( '?', $menu[ 2 ] ) );
+
+                            if ( isset( $component_data[ 'object' ] ) && method_exists( $component_data[ 'object' ], 'admin_assets' ) )
+                                add_action( 'admin_print_styles-' . $page, array( $component_data[ 'object' ], 'admin_assets' ) );
+
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -97,10 +155,6 @@ class PodsComponents {
             if ( !isset( $this->components[ $component ] ) || 0 == $options )
                 continue;
 
-            if ( 'on' == $this->components[ $component ][ 'DeveloperMode' ] )
-                continue;
-
-
             if ( !empty( $this->components[ $component ][ 'PluginDependency' ] ) ) {
                 $dependency = explode( '|', $this->components[ $component ][ 'PluginDependency' ] );
 
@@ -110,8 +164,21 @@ class PodsComponents {
 
             $component_data = $this->components[ $component ];
 
-            if ( !file_exists( $component_data[ 'File' ] ) )
+            $component_data[ 'File' ] = realpath( PODS_DIR . $component_data[ 'File' ] );
+
+            if ( empty( $component_data[ 'File' ] ) ) {
+                pods_transient_clear( 'pods_components' );
+
                 continue;
+            }
+
+            if ( !file_exists( $component_data[ 'File' ] ) ) {
+                pods_message( 'Pods Component not found: ' . $component_data[ 'File' ] );
+
+                pods_transient_clear( 'pods_components' );
+
+                continue;
+            }
 
             include_once $component_data[ 'File' ];
 
@@ -136,10 +203,10 @@ class PodsComponents {
      * @since 2.0.0
      */
     public function get_components () {
-        $components = get_transient( 'pods_components' );
+        $components = pods_transient_get( 'pods_components' );
 
-        if ( !is_array( $components ) || empty( $components ) || ( is_admin() && isset( $_GET[ 'page' ] ) && 'pods-components' == $_GET[ 'page' ] && isset( $_GET[ 'reload_components' ] ) ) ) {
-            $component_dir = @opendir( rtrim( $this->components_dir, '/' ) );
+        if ( PodsInit::$version != PODS_VERSION || !is_array( $components ) || empty( $components ) || ( is_admin() && isset( $_GET[ 'page' ] ) && 'pods-components' == $_GET[ 'page' ] && false !== pods_transient_get( 'pods_components_refresh' ) ) ) {
+            $component_dir = @opendir( untrailingslashit( $this->components_dir ) );
             $component_files = array();
 
             if ( false !== $component_dir ) {
@@ -154,7 +221,7 @@ class PodsComponents {
                                 if ( '.' == substr( $subfile, 0, 1 ) )
                                     continue;
                                 elseif ( '.php' == substr( $subfile, -4 ) )
-                                    $component_files[] = $this->components_dir . $file . '/' . $subfile;
+                                    $component_files[] = realpath( $this->components_dir . $file . '/' . $subfile );
                             }
 
                             closedir( $component_subdir );
@@ -170,10 +237,14 @@ class PodsComponents {
             $default_headers = array(
                 'ID' => 'ID',
                 'Name' => 'Name',
+                'URI' => 'URI',
                 'MenuName' => 'Menu Name',
+                'MenuPage' => 'Menu Page',
+                'MenuAddPage' => 'Menu Add Page',
                 'Description' => 'Description',
                 'Version' => 'Version',
                 'Author' => 'Author',
+                'AuthorURI' => 'Author URI',
                 'Class' => 'Class',
                 'Hide' => 'Hide',
                 'PluginDependency' => 'Plugin Dependency',
@@ -195,7 +266,7 @@ class PodsComponents {
                     $component_data[ 'MenuName' ] = $component_data[ 'Name' ];
 
                 if ( empty( $component_data[ 'Class' ] ) )
-                    $component_data[ 'Class' ] = 'Pods_' . basename( $component_file, '.php' );
+                    $component_data[ 'Class' ] = 'Pods_' . pods_clean_name( basename( $component_file, '.php' ), false );
 
                 if ( empty( $component_data[ 'ID' ] ) )
                     $component_data[ 'ID' ] = sanitize_title( $component_data[ 'Name' ] );
@@ -205,14 +276,16 @@ class PodsComponents {
                 else
                     $component_data[ 'DeveloperMode' ] = false;
 
-                $component_data[ 'File' ] = $component_file;
+                $component_data[ 'File' ] = str_replace( PODS_DIR, '', $component_file );
 
                 $components[ $component_data[ 'ID' ] ] = $component_data;
             }
 
             ksort( $components );
 
-            set_transient( 'pods_components', $components );
+            pods_transient_set( 'pods_components_refresh', 1, ( 60 * 60 * 12 ) );
+
+            pods_transient_set( 'pods_components', $components );
         }
 
         $this->components = $components;
@@ -220,6 +293,14 @@ class PodsComponents {
         return $this->components;
     }
 
+    /**
+     * Set component options
+     *
+     * @param $component
+     * @param $options
+     *
+     * @since 2.0.0
+     */
     public function options ( $component, $options ) {
         if ( !isset( $this->settings[ 'components' ][ $component ] ) || !is_array( $this->settings[ 'components' ][ $component ] ) )
             $this->settings[ 'components' ][ $component ] = array();
@@ -230,23 +311,39 @@ class PodsComponents {
         }
     }
 
+    /**
+     * Call component specific admin functions
+     *
+     * @since 2.0.0
+     */
     public function admin_handler () {
         $component = str_replace( 'pods-component-', '', $_GET[ 'page' ] );
 
         if ( isset( $this->components[ $component ] ) && isset( $this->components[ $component ][ 'object' ] ) && method_exists( $this->components[ $component ][ 'object' ], 'admin' ) )
-            $this->components[ $component ][ 'object' ]->admin( $this->settings[ 'components' ][ $component ] );
+            $this->components[ $component ][ 'object' ]->admin( $this->settings[ 'components' ][ $component ], $component );
     }
 
+    /**
+     * Toggle a component on or off
+     *
+     * @param string $component The component name to toggle
+     *
+     * @return bool
+     *
+     * @since 2.0.0
+     */
     public function toggle ( $component ) {
-        $toggle = false;
+        $toggle = null;
 
         if ( isset( $this->components[ $component ] ) ) {
-            if ( !isset( $this->settings[ 'components' ][ $component ] ) || 0 == $this->settings[ 'components' ][ $component ] ) {
+            if ( 1 == pods_var( 'toggle', 'get' ) && ( !isset( $this->settings[ 'components' ][ $component ] ) || 0 == $this->settings[ 'components' ][ $component ] ) ) {
                 $this->settings[ 'components' ][ $component ] = array();
                 $toggle = true;
             }
-            else
+            elseif ( 0 == pods_var( 'toggle', 'get' ) ) {
                 $this->settings[ 'components' ][ $component ] = 0;
+                $toggle = false;
+            }
         }
 
         $settings = json_encode( $this->settings );
@@ -256,6 +353,11 @@ class PodsComponents {
         return $toggle;
     }
 
+    /**
+     * Handle admin ajax
+     *
+     * @since 2.0.0
+     */
     public function admin_ajax () {
         if ( false === headers_sent() ) {
             if ( '' == session_id() )
@@ -266,14 +368,15 @@ class PodsComponents {
 
         // Sanitize input
         $params = stripslashes_deep( (array) $_POST );
+
         foreach ( $params as $key => $value ) {
             if ( 'action' == $key )
                 continue;
+
             unset( $params[ $key ] );
+
             $params[ str_replace( '_podsfix_', '', $key ) ] = $value;
         }
-        if ( !defined( 'PODS_STRICT_MODE' ) || !PODS_STRICT_MODE )
-            $params = pods_sanitize( $params );
 
         $params = (object) $params;
 
@@ -283,11 +386,11 @@ class PodsComponents {
         if ( !isset( $component ) || !isset( $this->components[ $component ] ) || !isset( $this->settings[ 'components' ][ $component ] ) )
             pods_error( 'Invalid AJAX request', $this );
 
-        if ( !isset( $this->components[ $component ][ 'object' ] ) || !method_exists( $this->components[ $component ][ 'object' ], 'ajax_' . $method ) )
-            pods_error( 'API method does not exist', $this );
-
         if ( !isset( $params->_wpnonce ) || false === wp_verify_nonce( $params->_wpnonce, 'pods-component-' . $component . '-' . $method ) )
             pods_error( 'Unauthorized request', $this );
+
+        if ( !isset( $this->components[ $component ][ 'object' ] ) || !method_exists( $this->components[ $component ][ 'object' ], 'ajax_' . $method ) )
+            pods_error( 'API method does not exist', $this );
 
         // Cleaning up $params
         unset( $params->action );
@@ -300,7 +403,7 @@ class PodsComponents {
         $method = 'ajax_' . $method;
 
         // Dynamically call the component method
-        $output = call_user_func( array( $this->components[ $params->component ][ 'object' ], $method ), $params );
+        $output = call_user_func( array( $this->components[ $component ][ 'object' ], $method ), $params );
 
         if ( !is_bool( $output ) )
             echo $output;
@@ -309,6 +412,11 @@ class PodsComponents {
     }
 }
 
+/**
+ * The base component class, all components should extend this.
+ *
+ * @package Pods
+ */
 class PodsComponent {
 
     /**
@@ -387,7 +495,7 @@ class PodsComponent {
      *
      * @since 2.0.0
     public function admin ( $options ) {
-        // run code based on $options set
+    // run code based on $options set
     }
      */
 }

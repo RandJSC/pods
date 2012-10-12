@@ -6,8 +6,8 @@
  *
  * Version: 1.0
  *
- * @package pods
- * @subpackage markdown
+ * @package Pods\Components
+ * @subpackage Markdown
  */
 
 function pods_markdown_add_option ( $options, $type ) {
@@ -19,6 +19,7 @@ function pods_markdown_add_option ( $options, $type ) {
 
     return $options;
 }
+add_filter( 'pods_field_wysiwyg_options', 'pods_markdown_add_option', 10, 2 );
 add_filter( 'pods_field_paragraph_options', 'pods_markdown_add_option', 10, 2 );
 
 function pods_markdown_output ( $value, $options, $type ) {
@@ -27,6 +28,7 @@ function pods_markdown_output ( $value, $options, $type ) {
 
     return $value;
 }
+add_filter( 'pods_field_wysiwyg_output', 'pods_markdown_output' );
 add_filter( 'pods_field_paragraph_output', 'pods_markdown_output' );
 
 if ( !function_exists( 'Markdown' ) ) :
@@ -118,7 +120,11 @@ if (strcasecmp(substr(__FILE__, -16), "classTextile.php") == 0) {
 	# Try to include PHP SmartyPants. Should be in the same directory.
 	@include_once 'smartypants.php';
 	# Fake Textile class. It calls Markdown instead.
-	class Textile {
+    /**
+     * @package Pods\Components
+     * @subpackage Markdown
+     */
+    class Textile {
 		function TextileThis($text, $lite='', $encode='') {
 			if ($lite == '' && $encode == '')    $text = Markdown($text);
 			if (function_exists('SmartyPants'))  $text = SmartyPants($text);
@@ -138,6 +144,10 @@ if (strcasecmp(substr(__FILE__, -16), "classTextile.php") == 0) {
 #
 # Markdown Parser Class
 #
+/**
+* @package Pods\Components
+* @subpackage Markdown
+*/
 
 class Markdown_Parser {
 

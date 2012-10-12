@@ -1,44 +1,42 @@
 <?php
-    $attributes = array();
-    $attributes[ 'type' ] = 'text';
-    $attributes[ 'value' ] = $value;
-    $attributes = PodsForm::merge_attributes( $attributes, $name, PodsForm::$field_type, $options );
+$field_number = PodsForm::field_loader( 'number' );
 
-    $thousands = ',';
-    $dot = '.';
-    if ( '9999.99' == $options[ 'number_format' ] )
-        $thousands = '';
-    elseif ( '9999,99' == $options[ 'number_format' ] ) {
-        $thousands = '';
-        $dot = ',';
-    }
-    elseif ( '9.999,99' == $options[ 'number_format' ] ) {
-        $thousands = '.';
-        $dot = ',';
-    }
+$value = $field_number->format( $value, $name, $options, $pod, $id );
 
-    if ( 'i18n' == $options[ 'number_format' ] )
-        $attributes[ 'value' ] = number_format_i18n( (float) $attributes[ 'value' ], $options[ 'number_decimals' ] );
-    else
-        $attributes[ 'value' ] = number_format( (float) $attributes[ 'value' ], $options[ 'number_decimals' ], $dot, $thousands );
+$attributes = array();
+$attributes[ 'type' ] = 'text';
+$attributes[ 'value' ] = $value;
+$attributes[ 'tabindex' ] = 2;
+$attributes = PodsForm::merge_attributes( $attributes, $name, PodsForm::$field_type, $options );
+
+$thousands = ',';
+$dot = '.';
+
+if ( '9999.99' == pods_var_raw( 'number_format', $options ) )
+    $thousands = '';
+elseif ( '9999,99' == pods_var_raw( 'number_format', $options ) ) {
+    $thousands = '';
+    $dot = ',';
+}
+elseif ( '9.999,99' == pods_var_raw( 'number_format', $options ) ) {
+    $thousands = '.';
+    $dot = ',';
+}
 ?>
-<input<?php PodsForm::attributes( $attributes, $name, PodsForm::$field_type, $options ); ?> />
+<input<?php PodsForm::attributes( $attributes, $name, PodsForm::$field_type, $options ); ?>/>
 <script>
     jQuery( function ( $ ) {
-        $( 'input#<?php echo $attributes[ 'id' ]; ?>' ).keyup( function () {
-            if ( !/^[0-9<?php
-                echo implode( '\\', array_filter( array( $dot, $thousands ) ) );
+        $( 'input#<?php echo $attributes[ 'id' ]; ?>' ).on( 'blur', function () {
+            if ( !/^[0-9\<?php
+            echo implode( '\\', array_filter( array( $dot, $thousands ) ) );
             ?>]$/.test( $( this ).val() ) ) {
                 var newval = $( this )
-                                .val()
-                                .replace( /[^0-9<?php
-                                    echo implode( '\\', array_filter( array( $dot, $thousands ) ) );
-                                ?>]/g, '' );
+                    .val()
+                    .replace( /[^0-9\<?php
+                              echo implode( '\\', array_filter( array( $dot, $thousands ) ) );
+                              ?>]/g, '' );
                 $( this ).val( newval );
             }
-        } );
-        $( 'input#<?php echo $attributes[ 'id' ]; ?>' ).blur( function () {
-            $( this ).keyup();
         } );
     } );
 </script>

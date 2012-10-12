@@ -1,4 +1,9 @@
 <?php
+/**
+ * Handles boolean field type data and operations.
+ *
+ * @package Pods\Fields
+ */
 class PodsField_Boolean extends PodsField {
 
     /**
@@ -37,7 +42,7 @@ class PodsField_Boolean extends PodsField {
     /**
      * Add options and set defaults to
      *
-     * @param array $options
+     * @return array Array of available options
      *
      * @since 2.0.0
      */
@@ -88,21 +93,21 @@ class PodsField_Boolean extends PodsField {
      * @param mixed $value
      * @param string $name
      * @param array $options
-     * @param array $fields
      * @param array $pod
      * @param int $id
      *
+     * @return mixed|null
      * @since 2.0.0
      */
     public function display ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
         $yesno = array(
-            1 => pods_var( 'boolean_yes_label', $options ),
-            0 => pods_var( 'boolean_no_label', $options )
+            1 => pods_var_raw( 'boolean_yes_label', $options ),
+            0 => pods_var_raw( 'boolean_no_label', $options )
         );
 
         // Deprecated handling for 1.x
-        if ( !parent::$deprecated )
-            $value = $yesno[ $value ];
+        if ( !parent::$deprecated && isset( $yesno[ (int) $value ] ) )
+            $value = $yesno[ (int) $value ];
 
         return $value;
     }
@@ -126,24 +131,41 @@ class PodsField_Boolean extends PodsField {
 
         $field_type = 'checkbox';
 
-        if ( 'checkbox' != pods_var( 'boolean_format_type', $options ) ) {
-            $options[ 'data' ] = array(
-                1 => pods_var( 'boolean_yes_label', $options ),
-                0 => pods_var( 'boolean_no_label', $options )
-            );
-
-            if ( 'radio' == pods_var( 'boolean_format_type', $options ) )
-                $field_type = 'radio';
-            elseif ( 'dropdown' == pods_var( 'boolean_format_type', $options ) )
-                $field_type = 'select';
-        }
-        else {
-            $options[ 'data' ] = array(
-                1 => pods_var( 'boolean_yes_label', $options )
-            );
-        }
+        if ( 'radio' == pods_var( 'boolean_format_type', $options ) )
+            $field_type = 'radio';
+        elseif ( 'dropdown' == pods_var( 'boolean_format_type', $options ) )
+            $field_type = 'select';
 
         pods_view( PODS_DIR . 'ui/fields/' . $field_type . '.php', compact( array_keys( get_defined_vars() ) ) );
+    }
+
+    /**
+     * Get the data from the field
+     *
+     * @param string $name The name of the field
+     * @param string|array $value The value of the field
+     * @param array $options
+     * @param array $pod
+     * @param int $id
+     *
+     * @return array Array of possible field data
+     *
+     * @since 2.0.0
+     */
+    public function data ( $name = null, $value = null, $options = null, $pod = null, $id = null ) {
+
+        if ( 'checkbox' != pods_var( 'boolean_format_type', $options ) ) {
+            $data = array(
+                1 => pods_var_raw( 'boolean_yes_label', $options ),
+                0 => pods_var_raw( 'boolean_no_label', $options )
+            );
+        }
+        else {
+            $data = array(
+                1 => pods_var_raw( 'boolean_yes_label', $options )
+            );
+        }
+        return $data;
     }
 
     /**
@@ -155,6 +177,7 @@ class PodsField_Boolean extends PodsField {
      * @param string $pod
      * @param int $id
      *
+     * @return bool
      * @since 2.0.0
      */
     public function regex ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
@@ -170,7 +193,9 @@ class PodsField_Boolean extends PodsField {
      * @param array $fields
      * @param array $pod
      * @param int $id
+     * @param null $params
      *
+     * @return bool
      * @since 2.0.0
      */
     public function validate ( &$value, $name = null, $options = null, $fields = null, $pod = null, $id = null, $params = null ) {
@@ -188,6 +213,7 @@ class PodsField_Boolean extends PodsField {
      * @param array $pod
      * @param object $params
      *
+     * @return int|mixed
      * @since 2.0.0
      */
     public function pre_save ( $value, $id = null, $name = null, $options = null, $fields = null, $pod = null, $params = null ) {
@@ -217,11 +243,12 @@ class PodsField_Boolean extends PodsField {
     /**
      * Perform actions before deleting from the DB
      *
-     * @param string $name
-     * @param string $pod
      * @param int $id
-     * @param object $api
+     * @param string $name
+     * @param null $options
+     * @param string $pod
      *
+     * @return void
      * @since 2.0.0
      */
     public function pre_delete ( $id = null, $name = null, $options = null, $pod = null ) {
@@ -254,7 +281,15 @@ class PodsField_Boolean extends PodsField {
      *
      * @since 2.0.0
      */
-    public function ui ( $id, &$value, $name = null, $options = null, $fields = null, $pod = null ) {
+    public function ui ( $id, $value, $name = null, $options = null, $fields = null, $pod = null ) {
+        $yesno = array(
+            1 => pods_var_raw( 'boolean_yes_label', $options, __( 'Yes', 'pods' ), null, true ),
+            0 => pods_var_raw( 'boolean_no_label', $options, __( 'No', 'pods' ), null, true )
+        );
 
+        if ( isset( $yesno[ (int) $value ] ) )
+            $value = strip_tags( $yesno[ (int) $value ], '<strong><a><em><span><img>' );
+
+        return $value;
     }
 }

@@ -14,7 +14,8 @@
                 fields = $( '#pod_fields' ).val(),
                 helper = $( '#pod_helper' ).val(),
                 where = $( '#pod_where' ).val(),
-                shortcode = '[pods';
+                shortcode = '[pods',
+                pods_shortcode_first = true;
 
             // Validate the form
             var errors = [];
@@ -59,8 +60,9 @@
             }
 
             shortcode += ' name="' + pod_select + '"';
-            if ( slug && slug.length )
-                shortcode += 'slug="' + slug + '" ';
+            if ( slug && slug.length ) {
+                shortcode += ' slug="' + slug + '"';
+            }
             if ( orderby && orderby.length ) {
                 if ( direction.length ) {
                     shortcode += ' orderby="' + orderby + ' ' + direction + '"';
@@ -69,16 +71,21 @@
                     shortcode += ' orderby="' + orderby + ' ASC"';
                 }
             }
-            if ( template && template.length )
+            if ( template && template.length ) {
                 shortcode += ' template="' + template + '"';
-            if ( limit && limit.length )
+            }
+            if ( limit && limit.length ) {
                 shortcode += ' limit="' + limit + '"';
-            if ( field && field.length )
+            }
+            if ( field && field.length ) {
                 shortcode += ' field="' + field + '"';
-            if ( helper && helper.length )
+            }
+            if ( helper && helper.length ) {
                 shortcode += ' helper="' + helper + '"';
-            if ( where && where.length )
+            }
+            if ( where && where.length ) {
                 shortcode += ' where="' + where + '"';
+            }
 
             shortcode += ']';
 
@@ -96,52 +103,13 @@
             evt.preventDefault();
 
         } );
-    } );
-</script>
-
-<style type="text/css">
-    h3.popup-header {
-        font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", sans-serif;
-        font-weight: normal;
-        color: #5a5a5a;
-        font-size: 1.8em;
-        background: url(<?php echo PODS_URL; ?>/ui/images/icon32.png) top left no-repeat;
-        padding: 8px 0 5px 36px;
-        margin-top: 0;
-    }
-
-    div.pods-section, div.pods-select, div.pods-header {
-        padding: 15px 15px 0 15px;
-    }
-
-    div.pods-section.hide {
-        display: none;
-    }
-
-    .pods-section label {
-        display: inline-block;
-        width: 120px;
-        font-weight: bold;
-    }
-
-    a#pods_insert_shortcode {
-        color: white !important;
-    }
-
-    strong.red {
-        color: red;
-    }
-</style>
-
-<script type="text/javascript">
-    jQuery( function ( $ ) {
         var $useCaseSelector = $( '#pods-use-case-selector' ),
-            $form = $( '#pods_shortcode_form_element' ),
-            $podSelector = $( '#pod_select' ),
-            pods_ajaxurl = "<?php echo admin_url( 'admin-ajax.php?pods_ajax=1' ); ?>",
-            nonce = "<?php echo wp_create_nonce( 'pods-load_pod' ); ?>";
+                $form = $( '#pods_shortcode_form_element' ),
+                $podSelector = $( '#pod_select' ),
+                pods_ajaxurl = "<?php echo admin_url( 'admin-ajax.php?pods_ajax=1' ); ?>",
+                nonce = "<?php echo wp_create_nonce( 'pods-load_pod' ); ?>";
 
-        $useCaseSelector.change( function ( evt ) {
+        $useCaseSelector.change(function ( evt ) {
             var val = $( this ).val();
 
             $( '.pods-section' ).addClass( 'hide' );
@@ -168,9 +136,16 @@
                     } )
                     break;
             }
+
+            // Fix for TB ajaxContent not picking up the height on the first open
+            if ( pods_shortcode_first ) {
+                $( '#TB_ajaxContent' ).css( { height: '91%' } );
+                pods_shortcode_first = false;
+            }
         } );
 
-        $( '#pod_select' ).change( function () {
+        // @todo this code is not what it should be..
+        $( '#pod_select' ).change(function () {
             var pod = $( this ).val();
             var jax = $.ajax( pods_ajaxurl, {
                 type : 'POST',
@@ -184,7 +159,7 @@
             } );
             jax.success( function ( json ) {
                 var $orderby = $( '#pod_orderby' ),
-                    $field = $( '#pod_field' );
+                        $field = $( '#pod_field' );
 
                 $orderby.find( 'option' ).remove();
                 $orderby.append( '<option value=""></option>' );
@@ -197,118 +172,146 @@
                     $field.append( '<option value="' + val.name + '">' + val.label + '</option>' );
                 } );
             } );
-        } );
-
-        $( '#pod_select' ).trigger( 'change' );
+        } ).trigger( 'change' );
     } );
 </script>
 
+<style type="text/css">
+    .pods-shortcode h3.popup-header {
+        font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", sans-serif;
+        font-weight: normal;
+        color: #5a5a5a;
+        font-size: 1.8em;
+        background: url(<?php echo PODS_URL; ?>ui/images/icon32.png) top left no-repeat;
+        padding: 8px 0 5px 36px;
+        margin-top: 0;
+    }
+
+    .pods-shortcode div.pods-section, div.pods-select, div.pods-header {
+        padding: 15px 15px 0 15px;
+    }
+
+    .pods-shortcode div.pods-section.hide {
+        display: none;
+    }
+
+    .pods-shortcode .pods-section label {
+        display: inline-block;
+        width: 120px;
+        font-weight: bold;
+    }
+
+    a#pods_insert_shortcode {
+        color: white !important;
+    }
+
+    .pods-shortcode strong.red {
+        color: red;
+    }
+</style>
 
 <div id="pods_shortcode_form" style="display: none;">
-    <div class="wrap">
+    <div class="wrap pods-shortcode">
         <div>
             <div class="pods-header">
-                <h3 class="popup-header"><?php _e('Pods &raquo; Embed', 'pods'); ?></h3>
+                <h3 class="popup-header"><?php _e( 'Pods &raquo; Embed', 'pods' ); ?></h3>
             </div>
 
             <form id="pods_shortcode_form_element">
                 <div class="pods-select">
-                    <label for="pods-use-case-selector"><?php _e('What would you like to do?', 'pods'); ?></label>
-                    <select id="pods-use-case-selector">
-                        <option value="">---</option>
-                        <option value="single"><?php _e('Display a single Pod item', 'pods'); ?></option>
-                        <option value="list"><?php _e('List multiple Pod items', 'pods'); ?></option>
-                        <option value="field"><?php _e('Display a field from a single Pod item', 'pods'); ?></option>
-                    </select>
+                    <label for="pods-use-case-selector"><?php _e( 'What would you like to do?', 'pods' ); ?></label> <select id="pods-use-case-selector">
+                    <option value="single"><?php _e( 'Display a single Pod item', 'pods' ); ?></option>
+                    <option value="list" SELECTED><?php _e( 'List multiple Pod items', 'pods' ); ?></option>
+                    <option value="field"><?php _e( 'Display a field from a single Pod item', 'pods' ); ?></option>
+                </select>
                 </div>
-                <div class="pods-section hide">
+                <div class="pods-section">
                     <?php
-                        $api = pods_api();
-                        $all_pods = $api->load_pods();
-                        $pod_count = count( $all_pods );
+                    $api = pods_api();
+                    $all_pods = $api->load_pods();
+                    $pod_count = count( $all_pods );
                     ?>
                     <label for="pod_select">Choose a Pod</label>
                     <?php if ( $pod_count > 0 ) { ?>
-                        <select id="pod_select" name="pod_select">
-                            <?php foreach ( $all_pods as $pod => $data ) { ?>
-                                <option value="<?php echo $pod; ?>">
-                                    <?php echo $pod; ?>
-                                </option>
-                            <?php } ?>
-                        </select>
-                    <?php } else { ?>
-                        <strong class="red" id="pod_select"><?php _e('None Found', 'pods'); ?></strong>
+                    <select id="pod_select" name="pod_select">
+                        <?php foreach ( $all_pods as $pod ) { ?>
+                        <option value="<?php echo $pod[ 'name' ]; ?>">
+                            <?php echo $pod[ 'label' ]; ?>
+                        </option>
+                        <?php } ?>
+                    </select>
+                    <?php
+                }
+                else {
+                    ?>
+                    <strong class="red" id="pod_select"><?php _e( 'None Found', 'pods' ); ?></strong>
                     <?php } ?>
                 </div>
+                <div class="pods-section">
+                    <?php
+                    $templates = $api->load_templates();
+                    $template_count = count( $templates );
+                    ?>
+                    <label for="pod_template">Template</label> <select id="pod_template" name="pod_template">
+                    <option value="" SELECTED>Custom Template</option>
+                    <?php foreach ( $templates as $tmpl ) { ?>
+                    <option value="<?php echo $tmpl[ 'name' ]; ?>">
+                        <?php echo $tmpl[ 'name' ]; ?>
+                    </option>
+                    <?php } ?>
+                </select>
+                </div>
+                <div class="pods-section">
+                    <label for="pod_template_custom"> <?php _e( 'Custom Template', 'pods' ); ?> </label> <textarea name="pod_template_custom" id="pod_template_custom" cols="10" rows="10" class="widefat"></textarea>
+                </div>
+                <div class="pods-section hide">
+                    <label for="pod_slug"><?php _e( 'ID or Slug', 'pods' ); ?></label>
+                    <input type="text" id="pod_slug" name="pod_slug" />
+                </div>
+                <div class="pods-section">
+                    <label for="pod_limit"><?php _e( 'Limit', 'pods' ); ?></label>
+                    <input type="text" id="pod_limit" name="pod_limit" />
+                </div>
+                <div class="pods-section">
+                    <label for="pod_orderby"><?php _e( 'Order By', 'pods' ); ?></label> <select name="pod_orderby" id="pod_orderby"> </select>
+                </div>
+                <div class="pods-section">
+                    <label for="pod_direction"><?php _e( 'Order Direction', 'pods' ); ?></label> <select id="pod_direction" name="pod_direction">
+                    <option value="ASC">
+                        <?php _e( 'Ascending', 'pods' ); ?>
+                    </option>
+                    <option value="DESC">
+                        <?php _e( 'Descending', 'pods' ); ?>
+                    </option>
+                </select>
+                </div>
+                <div class="pods-section">
+                    <label for="pod_where"><?php _e( 'Where', 'pods' ); ?></label>
+                    <input type="text" name="pod_where" id="pod_where" />
+                </div>
+                <div class="pods-section hide">
+                    <label for="pod_field"><?php _e( 'Field', 'pods' ); ?></label> <select id="pod_field" name="pod_field"> </select>
+                </div>
+                <div class="pods-section hide">
+                    <label for="pod_fields"><?php _e( 'Fields (comma-separated)', 'pods' ); ?></label>
+                    <input type="text" id="pod_fields" name="pod_fields" />
+                </div>
                 <div class="pods-section hide">
                     <?php
-                        $templates = $api->load_templates( array(
-                            'orderby' => 'name ASC',
-                        ) );
-                        $template_count = count( $templates );
+                    $helpers = $api->load_helpers( array( 'options' => array( 'helper_type' => 'display' ) ) );
+                    $helper_count = count( $helpers );
                     ?>
-                    <label for="pod_template">Template</label>
-                    <select id="pod_template" name="pod_template">
-                        <option value="">- Custom Template -</option>
-                        <?php foreach ( $templates as $tmpl => $data ) { ?>
-                            <option value="<?php echo $tmpl; ?>">
-                                <?php echo $tmpl; ?>
-                            </option>
-                        <?php } ?>
-                    </select>
+                    <label for="pod_helper"><?php _e( 'Helper', 'pods' ); ?></label> <select id="pod_helper" name="pod_helper">
+                    <option value="">- <?php _e( 'Helper', 'pods' ); ?> -</option>
+                    <?php foreach ( $helpers as $helper ) { ?>
+                    <option value="<?php echo $helper[ 'name' ]; ?>">
+                        <?php echo $helper[ 'name' ]; ?>
+                    </option>
+                    <?php } ?>
+                </select>
                 </div>
-                <div class="pods-section hide">
-                    <label for="pod_template_custom"> <?php _e('Custom Template', 'pods'); ?> </label>
-                    <textarea name="pod_template_custom" id="pod_template_custom" cols="10" rows="10" class="widefat"></textarea>
-                </div>
-                <div class="pods-section hide">
-                    <label for="pod_slug"><?php _e('ID or Slug', 'pods'); ?></label> <input type="text" id="pod_slug" name="pod_slug" />
-                </div>
-                <div class="pods-section hide">
-                    <label for="pod_limit"><?php _e('Limit', 'pods'); ?></label> <input type="text" id="pod_limit" name="pod_limit" />
-                </div>
-                <div class="pods-section hide">
-                    <label for="pod_orderby"><?php _e('Order By', 'pods'); ?></label> <select name="pod_orderby" id="pod_orderby"> </select>
-                </div>
-                <div class="pods-section hide">
-                    <label for="pod_direction"><?php _e('Order Direction', 'pods'); ?></label>
-                    <select id="pod_direction" name="pod_direction">
-                        <option value="ASC">
-                            <?php _e('Ascending', 'pods'); ?>
-                        </option>
-                        <option value="DESC">
-                            <?php _e('Descending', 'pods'); ?>
-                        </option>
-                    </select>
-                </div>
-                <div class="pods-section hide">
-                    <label for="pod_where"><?php _e('Where', 'pods'); ?></label> <input type="text" name="pod_where" id="pod_where" />
-                </div>
-                <div class="pods-section hide">
-                    <label for="pod_field"><?php _e('Field', 'pods'); ?></label> <select id="pod_field" name="pod_field"> </select>
-                </div>
-                <div class="pods-section hide">
-                    <label for="pod_fields"><?php _e('Fields (comma-separated)', 'pods'); ?></label> <input type="text" id="pod_fields" name="pod_fields" />
-                </div>
-                <div class="pods-section hide">
-                    <?php
-                        $helpers = $api->load_helpers( array(
-                            'orderby' => 'name ASC',
-                        ) );
-                        $helper_count = count( $helpers );
-                    ?>
-                    <label for="pod_helper"><?php _e('Helper', 'pods'); ?></label>
-                    <select id="pod_helper" name="pod_helper">
-                        <option value="">- <?php _e('Helper', 'pods'); ?> -</option>
-                        <?php foreach ( $helpers as $helper => $data ) { ?>
-                            <option value="<?php echo $helper; ?>">
-                                <?php echo $helper; ?>
-                            </option>
-                        <?php } ?>
-                    </select>
-                </div>
-                <div class="pods-section hide" style="text-align: right;">
-                    <a class="button-primary" id="pods_insert_shortcode" href="#"><?php _e('Insert', 'pods'); ?></a>
+                <div class="pods-section" style="text-align: right;">
+                    <a class="button-primary" id="pods_insert_shortcode" href="#"><?php _e( 'Insert', 'pods' ); ?></a>
                 </div>
             </form>
         </div>

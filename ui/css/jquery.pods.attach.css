@@ -11,9 +11,14 @@ ul.pods-files:empty {
 }
 
 ul.pods-file-meta {
+    display: block;
     overflow: hidden;
     zoom: 1;
     position: relative;
+}
+
+form.pods-form ul.pods-files li.pods-file-name {
+    overflow: inherit;
 }
 
 ul.pods-files li.pods-file-col {
@@ -65,7 +70,12 @@ ul.pods-files li.pods-file-name {
     padding-top: 5px;
 }
 
+form.pods-form ul.pods-files li.pods-file-name {
+    padding-top: 3px;
+}
+
 ul.pods-files li.pods-file {
+    display: block;
     padding: 8px 10px;
     margin: 0;
     border-bottom: 1px solid #efefef;
@@ -78,4 +88,50 @@ ul.pods-files li.pods-file:hover {
 
 ul.pods-files li.pods-file:last-of-type {
     border-bottom: 0;
+}
+
+ul.pods-files-queue {
+    margin: 14px 0 0;
+}
+
+ul.pods-files-queue li.pods-file-name {
+    position: relative;
+    width: 73%;
+    left: auto;
+    right: auto;
+    padding-top: 0;
+}
+
+ul.pods-files-queue li.pods-file li.pods-progress {
+    position: relative;
+    width: 23%;
+    height: 14px;
+    margin: 2px 2% 0 0;
+    border: 1px solid #E7E7E7;
+}
+ul.pods-files-queue li.pods-file li.pods-progress div.progress-bar {
+    width: 0px;
+    height: 14px;
+    background-color: #4D4D4D;
+}
+
+ul.pods-files li.pods-file:after,
+ul.pods-files li.pods-file ul.pods-file-meta:after,
+ul.pods-files-queue li.pods-file:after,
+ul.pods-files-queue li.pods-file ul.pods-file-meta:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+a.pods-quick-add,
+span.pods-quick-add {
+    display: block;
+    line-height: 36px;
+    float: right;
+    margin-right: 15px;
+}
+div.open a.pods-quick-add,
+div.open span.pods-quick-add {
+    display: none;
 }

@@ -324,7 +324,7 @@ li.invisible {
     vertical-align: top;
 }
 
-.pods-admin .icon32#icon-pods {
+.icon32#icon-pods {
     background: url(../images/icon32.png) no-repeat;
 }
 
@@ -504,6 +504,16 @@ tbody.pods-manage-list tr div.pods-manage-row-wrapper .pods-manage-row-save {
     width: 40%;
 }
 
+tbody.pods-manage-list tr.pods-field-new div.pods-manage-row-wrapper .pods-manage-row-delete a.submitdelete,
+tbody.pods-manage-list tr div.pods-manage-row-wrapper .pods-manage-row-save a.pods-button-add,
+tbody.pods-manage-list tr.pods-field-new div.pods-manage-row-wrapper .pods-manage-row-save a.pods-button-update {
+    display: none;
+}
+
+tbody.pods-manage-list tr.pods-field-new div.pods-manage-row-wrapper .pods-manage-row-save a.pods-button-add {
+    display: inline;
+}
+
 /*
  * Pods Toggled
  */
@@ -512,12 +522,24 @@ tbody.pods-manage-list tr div.pods-manage-row-wrapper .pods-manage-row-save {
     margin-top: 30px;
 }
 
+.pods-toggled.pods-toggled-only {
+    margin-top: 0;
+}
+
 .pods-toggled h3 {
     cursor: pointer;
 }
 
 .pods-no-toggle h3 {
     cursor: default;
+}
+
+tr.pods-toggled-on {
+    background-color: #FFF;
+}
+
+tr.pods-toggled-off {
+    background-color: #F4F4F4;
 }
 
 /*
@@ -638,6 +660,29 @@ tbody.pods-manage-list tr div.pods-manage-row-wrapper .pods-manage-row-save {
     margin: 0;
 }
 
+.pods-manage-field .pods-pick-values.pods-zebra {
+    width: 100%;
+    max-width: 100%;
+}
+
+.pods-manage-field .pods-pick-values.pods-zebra div.pods-boolean {
+    padding: 3px;
+}
+
+.pods-manage-field .pods-pick-values li.pods-zebra-odd {
+    display: block;
+    width: 50%;
+    float: left;
+    clear: both;
+}
+
+.pods-manage-field .pods-pick-values li.pods-zebra-even {
+    display: block;
+    width: 50%;
+    float: left;
+    clear: none;
+}
+
 .pods-manage-field .pods-field.pods-boolean:hover {
     background: #ffffd8;
 }
@@ -685,4 +730,8 @@ tbody.pods-manage-list tr.flexible-row {
 div.row-actions.row-actions-toggle {
     display: block;
     visibility: visible;
+}
+
+.pods-field-option select:focus, .pods-field input[type=checkbox]:focus + label{
+    background: #ffffcc;
 }

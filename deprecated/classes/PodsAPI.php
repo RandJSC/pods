@@ -1,7 +1,20 @@
 <?php
+/**
+ * @package Pods\Deprecated
+ */
 class PodsAPI_Deprecated {
 
     private $obj;
+
+    var $snap = false;
+
+    var $dt = 0;
+
+    var $dtname = '';
+
+    var $fields = array();
+
+    var $use_pod_id = false;
 
     /**
      * Constructor - PodsAPI Deprecated functionality (pre 2.0)
@@ -33,7 +46,7 @@ class PodsAPI_Deprecated {
      * $params['type'] string The column type ("txt", "desc", "pick", etc)
      * $params['pick_object'] string The related PICK object name
      * $params['pick_val'] string The related PICK object value
-     * $params['sister_field_id'] int (optional) The related field ID
+     * $params['sister_id'] int (optional) The related field ID
      * $params['weight'] int The field weight
      * $params['options'] array The field options
      *
@@ -53,7 +66,7 @@ class PodsAPI_Deprecated {
      * $params['pod_id'] string The Pod name
      * $params['columns'] array (optional) Associative array of column names + values
      * $params['data'] array (optional) Associative array of a set of associative arrays of column names + values (for bulk operations)
-     * $params['id'] int The item's ID from the wp_pod_tbl_* table (or alternatively use the pod_id parameter instead)
+     * $params['id'] int The item's ID from the wp_pod_* table (or alternatively use the pod_id parameter instead)
      * $params['bypass_helpers'] bool Set to true to bypass running pre-save and post-save helpers
      *
      * @param array $params An associative array of parameters
@@ -166,7 +179,7 @@ class PodsAPI_Deprecated {
     /**
      * Drop a single pod item
      *
-     * $params['id'] int (optional) The item's ID from the wp_pod_tbl_* table (used with datatype parameter)
+     * $params['id'] int (optional) The item's ID from the wp_pod_* table (used with datatype parameter)
      * $params['pod'] string (optional) The datatype name (used with id parameter)
      * $params['pod_id'] int (optional) The datatype ID (used with id parameter)
      * $params['bypass_helpers'] bool Set to true to bypass running pre-save and post-save helpers
@@ -192,7 +205,7 @@ class PodsAPI_Deprecated {
      * @since 1.7.9
      */
     public function load_column ($params) {
-        pods_deprecated( 'PodsAPI::load_field', '2.0.0' );
+        pods_deprecated( 'PodsAPI::load_column', '2.0.0', 'PodsAPI::load_field' );
 
         return $this->obj->load_field( $params );
     }

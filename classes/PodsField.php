@@ -1,4 +1,7 @@
 <?php
+/**
+ * @package Pods
+ */
 class PodsField {
 
     /**
@@ -125,10 +128,10 @@ class PodsField {
      * @param mixed $value
      * @param string $name
      * @param array $options
-     * @param array $fields
      * @param array $pod
      * @param int $id
      *
+     * @return mixed|null
      * @since 2.0.0
      */
     public function display ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
@@ -153,6 +156,24 @@ class PodsField {
     }
 
     /**
+     * Get the data from the field
+     *
+     * @param string $name The name of the field
+     * @param string|array $value The value of the field
+     * @param array $options
+     * @param array $pod
+     * @param int $id
+     *
+     * @return array Array of possible field data
+     *
+     * @since 2.0.0
+     */
+
+    public function data ( $name = null, $value = null, $options = null, $pod = null, $id = null ) {
+        return (array) $value;
+    }
+
+    /**
      * Build regex necessary for JS validation
      *
      * @param mixed $value
@@ -161,6 +182,7 @@ class PodsField {
      * @param string $pod
      * @param int $id
      *
+     * @return bool
      * @since 2.0.0
      */
     public function regex ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
@@ -177,6 +199,7 @@ class PodsField {
      * @param array $pod
      * @param int $id
      *
+     * @return bool
      * @since 2.0.0
      */
     public function validate ( &$value, $name = null, $options = null, $fields = null, $pod = null, $id = null ) {
@@ -194,6 +217,7 @@ class PodsField {
      * @param array $pod
      * @param object $params
      *
+     * @return mixed
      * @since 2.0.0
      */
     public function pre_save ( $value, $id = null, $name = null, $options = null, $fields = null, $pod = null, $params = null ) {
@@ -220,10 +244,10 @@ class PodsField {
     /**
      * Perform actions before deleting from the DB
      *
-     * @param string $name
-     * @param string $pod
      * @param int $id
-     * @param object $api
+     * @param string $name
+     * @param null $options
+     * @param string $pod
      *
      * @since 2.0.0
      */
@@ -257,7 +281,7 @@ class PodsField {
      *
      * @since 2.0.0
      */
-    public function ui ( $id, &$value, $name = null, $options = null, $fields = null, $pod = null ) {
-
+    public function ui ( $id, $value, $name = null, $options = null, $fields = null, $pod = null ) {
+        return $value;
     }
 }

@@ -1,4 +1,7 @@
 <?php
+/**
+ * @package Pods\Fields
+ */
 class PodsField_Slug extends PodsField {
 
     /**
@@ -54,10 +57,10 @@ class PodsField_Slug extends PodsField {
      * @param mixed $value
      * @param string $name
      * @param array $options
-     * @param array $fields
      * @param array $pod
      * @param int $id
      *
+     * @return mixed|null
      * @since 2.0.0
      */
     public function display ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
@@ -93,6 +96,7 @@ class PodsField_Slug extends PodsField {
      * @param string $pod
      * @param int $id
      *
+     * @return bool
      * @since 2.0.0
      */
     public function regex ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
@@ -108,18 +112,17 @@ class PodsField_Slug extends PodsField {
      * @param array $fields
      * @param array $pod
      * @param int $id
+     * @param null $params
      *
+     * @return bool
      * @since 2.0.0
      */
     public function validate ( &$value, $name = null, $options = null, $fields = null, $pod = null, $id = null, $params = null ) {
-        if ( empty( $value ) && isset( $fields[ $pod[ 'index' ] ][ 'value' ] ) )
+        if ( empty( $value ) && isset( $fields[ $pod[ 'index' ] ] ) )
             $value = $fields[ $pod[ 'index' ] ][ 'value' ];
 
-        if ( !empty( $value ) )
-            $value = pods_unique_slug( $value, $name, pods_var( 'pod', $pod ), pods_var( 'pod_id', $pod ), $id );
-
         if ( empty( $value ) )
-            return false;
+            return sprintf( __( '%s is empty.', 'pods' ), pods_var_raw( 'label', $options, $name, null, true ) );
 
         return true;
     }
@@ -135,10 +138,11 @@ class PodsField_Slug extends PodsField {
      * @param array $pod
      * @param object $params
      *
+     * @return mixed|string
      * @since 2.0.0
      */
     public function pre_save ( $value, $id = null, $name = null, $options = null, $fields = null, $pod = null, $params = null ) {
-        $value = pods_unique_slug( $value, $name, $pod );
+        $value = pods_unique_slug( $value, $name, $pod, 0, $params->id );
 
         return $value;
     }
@@ -163,10 +167,12 @@ class PodsField_Slug extends PodsField {
     /**
      * Perform actions before deleting from the DB
      *
-     * @param string $name
-     * @param string $pod
      * @param int $id
-     * @param object $api
+     * @param string $name
+     * @param null $options
+     * @param string $pod
+     *
+     * @return void
      *
      * @since 2.0.0
      */
@@ -198,9 +204,10 @@ class PodsField_Slug extends PodsField {
      * @param array $fields
      * @param array $pod
      *
+     * @return mixed|void
      * @since 2.0.0
      */
-    public function ui ( $id, &$value, $name = null, $options = null, $fields = null, $pod = null ) {
-
+    public function ui ( $id, $value, $name = null, $options = null, $fields = null, $pod = null ) {
+        return $this->display( $value, $name, $options, $pod, $id );
     }
 }

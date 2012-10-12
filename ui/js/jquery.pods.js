@@ -2,8 +2,11 @@
     var pods_changed = false;
     var methods = {
         validate : function () {
-            var $form = $( 'form.pods-submittable' );
-            $form.on( 'change keyup', 'input.pods-validate.pods-validate-required, select.pods-validate.pods-validate-required, textarea.pods-validate.pods-validate-required', function () {
+            var $containers = $( 'form.pods-submittable, .pods-validation' ),
+                form_fields = 'input.pods-validate, select.pods-validate, textarea.pods-validate';
+
+            // handle required
+            $containers.on( 'change keyup blur', form_fields.replace( ',', '.pods-validate-required,' ) + '.pods-validate-required', function () {
                 var $el = $( this );
 
                 $el.removeClass( 'pods-validate-error' );
@@ -11,20 +14,26 @@
                 if ( !$el.is( ':visible' ) )
                     return;
 
+                var label = '';
+
                 if ( 0 < $el.parent().find( 'label' ).length )
-                    var label = $el.parent().find( 'label' ).html().trim();
+                    label = $el.parent().find( 'label' ).html().trim();
                 else
-                    var label = $el.prop( 'name' ).trim().replace( '_', ' ' );
+                    label = $el.prop( 'name' ).trim().replace( '_', ' ' );
+
+                // TinyMCE support
+                if ( 'object' == typeof( tinyMCE ) && -1 < $el.prop( 'class' ).indexOf( 'pods-ui-field-tinymce' ) )
+                    tinyMCE.triggerSave();
 
                 if ( $el.is( 'input[type=checkbox]' ) && !$el.is( ':checked' ) ) {
                     if ( 0 == $el.parent().find( '.pods-validate-error-message' ).length )
-                        $el.parent().append( '<div class="pods-validate-error-message">' + label + ' is required.</div>' );
+                       $el.parent().append( '<div class="pods-validate-error-message">' + label.replace( /(<([^>]+)>)/ig, '' ) + ' is required.</div>' );
 
                     $el.addClass( 'pods-validate-error' );
                 }
                 else if ( '' == $el.val() || 0 == $el.val() ) {
                     if ( 0 == $el.parent().find( '.pods-validate-error-message' ).length )
-                        $el.parent().append( '<div class="pods-validate-error-message">' + label + ' is required.</div>' );
+                       $el.parent().append( '<div class="pods-validate-error-message">' + label.replace( /(<([^>]+)>)/ig, '' ) + ' is required.</div>' );
 
                     $el.addClass( 'pods-validate-error' );
                 }
@@ -51,33 +60,41 @@
                 if ( 'undefined' != typeof ajaxurl && ('' == pods_ajaxurl || '?pods_ajax=1' == pods_ajaxurl || document.location.href == pods_ajaxurl || document.location.href.replace( /\?nojs\=1/, '?pods_ajax=1' ) == pods_ajaxurl) )
                     pods_ajaxurl = ajaxurl + '?pods_ajax=1';
 
-                postdata = {};
-                field_data = {};
+                if ( 'undefined' != typeof ajaxurl && $submittable.hasClass( 'pods-submittable-ajax' ) )
+                    pods_ajaxurl = ajaxurl + '?pods_ajax=1';
+
+                var postdata = {};
+                var field_data = {};
 
                 var valid_form = true;
 
                 var field_id = 0,
                     field_index = 0;
 
+                // See if we have any instances of tinyMCE and save them
+                if( 'undefined' != typeof tinyMCE )
+                    tinyMCE.triggerSave();
+
                 $submittable.find( '.pods-submittable-fields' ).find( 'input, select, textarea' ).each( function () {
                     var $el = $( this );
-                    var val = $el.val();
+                    var field_name = $el.prop( 'name' );
 
-                    if ( '' != $el.prop( 'name' ) ) {
-                        if ( $el.is( 'input[type=checkbox]' ) && 1 == val && !$el.is( ':checked' ) )
+                    if ( '' != field_name && 0 != field_name.indexOf( 'field_data[' ) ) {
+                        var val = $el.val();
+
+                        if ( $el.is( 'input[type=checkbox]' ) && !$el.is( ':checked' ) )
                             val = 0;
                         else if ( $el.is( 'input[type=radio]' ) && !$el.is( ':checked' ) )
-                            val = '';
+                            return true; // This input is not checked, continue the loop
 
                         if ( $el.is( ':visible' ) && $el.hasClass( 'pods-validate pods-validate-required' ) && ('' == $el.val() || 0 == $el.val()) ) {
-                            if ( 0 == $el.parent().find( '.pods-validate-error-message' ).length )
-                                $el.parent().append( '<div class="pods-validate-error-message">' + $el.parent().find( 'label' ).html().trim() + ' is required.</div>' );
+                            $el.trigger( 'change' );
 
                             if ( false !== valid_form )
                                 $el.focus();
 
                             $el.addClass( 'pods-validate-error' );
-                            $el.focus();
+
                             valid_form = false;
                         }
                         else {
@@ -85,61 +102,27 @@
                             $el.removeClass( 'pods-validate-error' );
                         }
 
-                        field_name = $el.prop( 'name' );
-
-                        if ( 0 == field_name.indexOf( 'field_data' ) ) {
-                            var field_array = field_name.match( /\[(\w*|)\]/gi ),
-                                field_name = '';
-
-                            for ( var i in field_array ) {
-                                the_field = field_array[ i ].replace( '[', '' ).replace( ']', '' );
-
-                                if ( 0 == i ) {
-                                    if ( field_index != the_field )
-                                        field_id++;
-
-                                    field_index = the_field;
-
-                                    if ( 'undefined' == typeof field_data[ field_id ] )
-                                        field_data[ field_id ] = {};
-                                }
-                                else if ( 1 == i ) {
-                                    field_name = the_field;
-
-                                    if ( 2 == field_array.length )
-                                        field_data[ field_id ][ field_name ] = val;
-                                }
-                                else if ( 2 == i ) {
-                                    the_field = parseInt( the_field );
-
-                                    if ( 'NaN' == the_field )
-                                        field_data[ field_id ][ field_name ] = val;
-                                    else {
-                                        if ( 'undefined' == typeof field_data[ field_id ][ field_name ] )
-                                            field_data[ field_id ][ field_name ] = {};
-
-                                        while ( 'undefined' != typeof( field_data[ field_id ][ field_name ][ the_field ] ) ) {
-                                            the_field++;
-                                        }
-
-                                        field_data[ field_id ][ field_name ][ the_field ] = val;
-                                    }
-                                }
-                            }
-                        }
-                        else
-                            postdata[ field_name ] = val;
+                        postdata[ field_name ] = val;
                     }
                 } );
 
-                if ( false === valid_form )
+                if ( false === valid_form ) {
+                    $submittable.addClass( 'invalid-form' );
+
+                    // re-enable the submit button
+                    $( $submittable ).find( 'input[type=submit], button[type=submit]' ).each( function () {
+                        var $submitbutton = $( this );
+                        $submitbutton.css( 'cursor', 'pointer' );
+                        $submitbutton.prop( 'disabled', false );
+                        $submitbutton.parent().find( '.waiting' ).fadeOut();
+                    } );
+
                     return false;
+                }
+                else
+                    $submittable.removeClass( 'invalid-form' );
 
                 pods_ajaxurl = pods_ajaxurl + '&action=' + postdata.action;
-
-                // $_POST doesn't like a LOT of items, JSON encode it as one string
-                if ( !$.isEmptyObject( field_data ) )
-                    postdata[ 'field_data' ] = $.toJSON( field_data );
 
                 $submitbutton = $submittable.find( 'input[type=submit], button[type=submit]' );
 
@@ -150,9 +133,9 @@
                     cache : false,
                     data : postdata,
                     success : function ( d ) {
-                        if ( -1 == d.indexOf( '<e>' ) && -1 != d ) {
+                        if ( -1 == d.indexOf( '<e>' ) && -1 == d.indexOf('</e>') && -1 != d ) {
                             if ( 'undefined' != typeof pods_admin_submit_callback )
-                                pods_admin_submit_callback( parseInt( d ) );
+                                pods_admin_submit_callback( d );
                             else if ( 'undefined' != typeof $submittable.data( 'location' ) )
                                 document.location.href = $submittable.data( 'location' ).replace( 'X_ID_X', parseInt( d ) );
                             else
@@ -169,19 +152,47 @@
                             $submitbutton.prop( 'disabled', false );
                             $submitbutton.parent().find( '.waiting' ).fadeOut();
 
+                            if ( $( '#pods-wizard-next' )[ 0 ] ) {
+                                $( '#pods-wizard-next' ).css( 'cursor', 'pointer' );
+                                $( '#pods-wizard-next' ).prop( 'disabled', false );
+                                $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'next' ) );
+                            }
+
                             alert( 'Error: ' + err_msg );
                             console.log( err_msg );
                         }
                     },
                     error : function () {
-                        $submitbutton.css( 'cursor', 'pointer' );
-                        $submitbutton.prop( 'disabled', false );
-                        $submitbutton.parent().find( '.waiting' ).fadeOut();
+                       $submitbutton.css( 'cursor', 'pointer' );
+                       $submitbutton.prop( 'disabled', false );
+                       $submitbutton.parent().find( '.waiting' ).fadeOut();
+
+                        if ( $( '#pods-wizard-next' )[ 0 ] ) {
+                            $( '#pods-wizard-next' ).css( 'cursor', 'pointer' );
+                            $( '#pods-wizard-next' ).prop( 'disabled', false );
+                            $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'next' ) );
+                        }
 
                         alert( 'Unable to process request, please try again.' );
                     }
                 } );
 
+            } )// Handle submit button and show waiting image
+            .on( 'click', 'input[type=submit], button[type=submit]', function ( e ) {
+                pods_changed = false;
+
+                e.preventDefault();
+
+                $( 'div#message' ).slideUp( 'fast', function() {
+                    $( this ).remove();
+                 } );
+
+                var $submitbutton = $( this );
+                $submitbutton.css( 'cursor', 'default' );
+                $submitbutton.prop( 'disabled', true );
+                $submitbutton.parent().find( '.waiting' ).fadeIn();
+
+                $( 'form.pods-submittable' ).trigger( 'submit' );
             } );
 
             // Handle submit via link and translate to AJAX
@@ -202,6 +213,10 @@
                 if ( 'undefined' != typeof $submitbutton.data( 'confirm' ) && !confirm( $submitbutton.data( 'confirm' ) ) )
                     return false;
 
+                $( 'div#message' ).slideUp( 'fast', function () {
+                    $( this ).remove();
+                } );
+
                 pods_changed = false;
 
                 pods_ajaxurl = pods_ajaxurl + '&action=' + postdata.action;
@@ -215,7 +230,7 @@
                     success : function ( d ) {
                         if ( -1 == d.indexOf( '<e>' ) && -1 != d ) {
                             if ( 'undefined' != typeof pods_admin_submit_callback )
-                                pods_admin_submit_callback( parseInt( d ) );
+                                pods_admin_submit_callback( d );
                             else if ( 'undefined' != typeof $submitbutton.data( 'location' ) )
                                 document.location.href = $submitbutton.data( 'location' ).replace( 'X_ID_X', parseInt( d ) );
                             else
@@ -237,27 +252,13 @@
                         }
                     },
                     error : function () {
-                        $submitbutton.css( 'cursor', 'pointer' );
-                        $submitbutton.prop( 'disabled', false );
-                        $submitbutton.parent().find( '.waiting' ).fadeOut();
+                       $submitbutton.css( 'cursor', 'pointer' );
+                       $submitbutton.prop( 'disabled', false );
+                       $submitbutton.parent().find( '.waiting' ).fadeOut();
 
                         alert( 'Unable to process request, please try again.' );
                     }
                 } );
-            } );
-
-            // Handle submit button and show waiting image
-            $( 'form.pods-submittable' ).on( 'click', 'input[type=submit], button[type=submit]', function ( e ) {
-                pods_changed = false;
-
-                e.preventDefault();
-
-                var $submitbutton = $( this );
-                $submitbutton.css( 'cursor', 'default' );
-                $submitbutton.prop( 'disabled', true );
-                $submitbutton.parent().find( '.waiting' ).fadeIn();
-
-                $( 'form.pods-submittable' ).trigger( 'submit' );
             } );
         },
         sluggable : function () {
@@ -324,7 +325,7 @@
 
             var sluggables = [];
 
-            $( '.pods-slugged[data-sluggable]' ).each( function () {
+            $( '.pods-slugged[data-sluggable], .pods-slugged-lower[data-sluggable]' ).each( function () {
                 if ( -1 == sluggables.indexOf( $( this ).data( 'sluggable' ) ) )
                     sluggables.push( $( this ).data( 'sluggable' ) );
             } );
@@ -332,35 +333,52 @@
             for ( var i in sluggables ) {
                 var sluggable = sluggables[ i ];
 
-                $slug = $( 'input[name="' + sluggable + '"]' );
+                methods[ 'sluggable_single' ]( sluggable );
+            }
+        },
+        sluggable_single : function ( sluggable ) {
+            var $slug = $( 'input[name="' + sluggable.replace( '[', '\\[' ).replace( ']', '\\]' ) + '"]' );
 
-                var slug = $( '.pods-sluggable .pods-slug-edit input[type=text]' ).val();
-
-                if ( $slug[ 0 ] && 0 < $slug.val().length )
-                    slug = $slug.val();
-
-                slug = slug.replace( /<(?:.)*?>/g, '' ).replace( /([^0-9a-zA-Z ])/g, '' );
-
-                $( '.pods-slugged-lower[data-sluggable="' + sluggable + '"]' ).html( slug.toLowerCase() );
-                $( '.pods-slugged[data-sluggable="' + sluggable + '"]' ).html( slug.charAt( 0 ).toUpperCase() + slug.slice( 1 ) );
-
-                if ( $slug[ 0 ] ) {
-                    $slug.on( 'change', function () {
-                        var slug = $( '.pods-sluggable .pods-slug-edit input[type=text]' ).val();
-
-                        if ( 0 < $( this ).val().length )
-                            slug = $( this ).val();
+            if ( $slug[ 0 ] ) {
+                $( 'form' ).on( 'change', 'input[name="' + sluggable.replace( '[', '\\[' ).replace( ']', '\\]' ) + '"]', function () {
+                    if ( 0 < $( this ).val().length ) {
+                        var slug = $( this ).val();
 
                         slug = slug.replace( /<(?:.)*?>/g, '' ).replace( /([^0-9a-zA-Z ])/g, '' );
 
-                        $( '.pods-slugged-lower[data-sluggable="' + $( this ).prop( 'name' ) + '"]' ).html( slug.toLowerCase() );
-                        $( '.pods-slugged[data-sluggable="' + $( this ).prop( 'name' ) + '"]' ).html( slug.charAt( 0 ).toUpperCase() + slug.slice( 1 ) );
-                    } );
+                        // update fields
+                       $( 'input.pods-slugged[data-sluggable="' + $( this ).prop( 'name' ).replace( '[', '\\[' ).replace( ']', '\\]' ) + '"]' ).each( function () {
+                            if ( '' == $( this ).val() ) {
+                                $( this ).val( slug.charAt( 0 ).toUpperCase() + slug.slice( 1 ) );
+                                $( this ).trigger( 'change' );
+                            }
+                        } );
+                       $( 'input.pods-slugged-lower[data-sluggable="' + $( this ).prop( 'name' ).replace( '[', '\\[' ).replace( ']', '\\]' ) + '"]' ).each( function () {
+                            if ( '' == $( this ).val() ) {
+                                $( this ).val( slug.toLowerCase() );
+                                $( this ).trigger( 'change' );
+                            }
+                        } );
+
+                        // update elements and trigger change
+                       $( '.pods-slugged-lower[data-sluggable="' + $( this ).prop( 'name' ).replace( '[', '\\[' ).replace( ']', '\\]' ) + '"]:not(input)' )
+                            .html( slug.toLowerCase() )
+                            .trigger( 'change' );
+
+                        // trigger change
+                       $( '.pods-slugged[data-sluggable="' + $( this ).prop( 'name' ).replace( '[', '\\[' ).replace( ']', '\\]' ) + '"]:not(input)' )
+                            .html( slug.charAt( 0 ).toUpperCase() + slug.slice( 1 ) )
+                            .trigger( 'change' );
+                    }
+                } );
+
+                if ( 0 < $slug.val().length ) {
+                    $slug.trigger( 'change' );
                 }
             }
         },
         tabbed : function () {
-            $( document ).on( 'click', '.pods-tabs .pods-tab a', function ( e ) {
+            $( '.pods-admin' ).on( 'click', '.pods-tabs .pods-tab a', function ( e ) {
                 $( this ).css( 'cursor', 'default' );
                 $( this ).prop( 'disabled', true );
 
@@ -385,7 +403,7 @@
                 }
                 else {
                     $tabbed.find( '.pods-tab-group .pods-tab' ).not( tab_hash ).slideUp( 'fast', function () {
-                        $tabbed.find( '.pods-tab-group .pods-tab' ).filter( tab_hash ).slideDown( 'fast' );
+                       $tabbed.find( '.pods-tab-group .pods-tab' ).filter( tab_hash ).slideDown( 'fast' );
                     } );
                 }
 
@@ -409,6 +427,39 @@
                 },
                 setProgress : function () {
                     $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'next ' ) );
+                },
+                stepBackward : function () {
+                    $( '#pods-wizard-next' ).css( 'cursor', 'pointer' );
+                    $( '#pods-wizard-next' ).prop( 'disabled', false );
+                    $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'next' ) );
+
+                    // Step toolbar menu state forwards
+                    $( 'li.pods-wizard-menu-current' )
+                        .removeClass( 'pods-wizard-menu-current pods-wizard-menu-complete' )
+                        .prev( 'li' )
+                        .removeClass( 'pods-wizard-menu-complete' )
+                        .addClass( 'pods-wizard-menu-current' );
+
+                    // Get current step #
+                    var step = false;
+
+                    if ( $( 'li.pods-wizard-menu-current[data-step]' )[ 0 ] )
+                        step = $( 'li.pods-wizard-menu-current' ).data( 'step' );
+
+                    // Show start over button
+                    if ( 1 == step )
+                       $( '#pods-wizard-start' ).hide();
+                    else
+                       $( '#pods-wizard-start' ).show();
+
+                    // Check if last step
+                    if ( $( 'div.pods-wizard-panel:visible' ).prev( 'div.pods-wizard-panel' ).length ) {
+                        // Show next panel
+                       $( 'div.pods-wizard-panel:visible' )
+                            .hide()
+                            .prev()
+                            .show();
+                    }
                 },
                 stepForward : function () {
                     // Show action bar for second panel if hidden
@@ -439,7 +490,7 @@
                     // Check if last step
                     if ( $( 'div.pods-wizard-panel:visible' ).next( 'div.pods-wizard-panel' ).length ) {
                         // Show next panel
-                        $( 'div.pods-wizard-panel:visible' )
+                       $( 'div.pods-wizard-panel:visible' )
                             .hide()
                             .next()
                             .show();
@@ -452,11 +503,22 @@
                             return check;
                     }
                     else if ( $( '#pods-wizard-box' ).closest( 'form' )[ 0 ] ) {
-                        $( '#pods-wizard-next' ).css( 'cursor', 'pointer' );
-                        $( '#pods-wizard-next' ).attr( 'disabled', true );
-                        $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'processing' ) );
+                       $( '#pods-wizard-next' ).css( 'cursor', 'default' );
+                       $( '#pods-wizard-next' ).prop( 'disabled', true );
+                       $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'processing' ) );
 
-                        $( '#pods-wizard-box' ).closest( 'form' ).submit();
+                       $( '#pods-wizard-box' ).closest( 'form' ).submit();
+
+                        if ( $( '#pods-wizard-box' ).closest( 'form' ).hasClass( 'invalid-form' ) ) {
+                            $( '#pods-wizard-next' ).css( 'cursor', 'pointer' );
+                            $( '#pods-wizard-next' ).prop( 'disabled', false );
+                            $( '#pods-wizard-next' ).text( $( '#pods-wizard-next' ).data( 'next' ) );
+
+                            // Step toolbar menu state forwards
+                            $( 'li.pods-wizard-menu-complete:last' )
+                                .removeClass( 'pods-wizard-menu-complete' )
+                                .addClass( 'pods-wizard-menu-current' )
+                        }
                     }
                     else {
                         // Allow for override
@@ -476,7 +538,7 @@
                     // If first panel and action bar is supposed to be hidden, hide it.
                     var $box = $( '#pods-wizard-box' );
                     if ( $box.data( 'hide' ) )
-                        $box.addClass( 'pods-wizard-hide-first' );
+                       $box.addClass( 'pods-wizard-hide-first' );
 
                     // Revert to first current menu item
                     $( '#pods-wizard-heading ul li' )
@@ -509,8 +571,8 @@
             $( '#pods-wizard-start' )
                 .hide()
                 .on( 'click', function ( e ) {
-                         e.preventDefault();
-                         methods.startOver();
+                        e.preventDefault();
+                        methods.startOver();
                      } );
 
             // Upgrade choice button event binding
@@ -531,6 +593,7 @@
                 var target = $( this ).attr( 'href' );
 
                 $( target ).show();
+                $( '.pods-wizard-option-content-' + target.replace( '#pods-wizard-', '' ) ).show();
 
                 if ( 'undefined' != typeof pods_admin_option_select_callback )
                     pods_admin_option_select_callback( $( this ) );
@@ -544,63 +607,63 @@
         },
         dependency : function () {
             // Hide all dependents
-            $( '.pods-dependency .pods-depends-on' ).hide();
+            $( '.pods-dependency .pods-depends-on, .pods-dependency .pods-excludes-on, .pods-dependency .pods-wildcard-on' ).hide();
 
             // Handle dependent toggle
-            $( document ).on( 'change', '.pods-dependency .pods-dependent-toggle', function ( e ) {
+            $( '.pods-admin' ).on( 'change', '.pods-dependent-toggle', function ( e ) {
                 var $el = $( this );
-                var $current = $el.closest( '.pods-dependency' );
+                var $current = $el.closest( 'div.pods-dependency' );
                 var $field = $el;
 
                 var dependent_flag = '.pods-depends-on-' + $el.data( 'name-clean' );
                 var dependent_specific = dependent_flag + '-' + $el.val();
 
                 $current.find( dependent_flag ).each( function () {
-                    var $el = $( this );
+                    var $dependent_el = $( this );
 
-                    if ( $el.parent().is( ':visible' ) ) {
+                    if ( $dependent_el.parent().is( ':visible' ) ) {
                         if ( $field.is( 'input[type=checkbox]' ) && $field.is( ':checked' ) ) {
-                            $el.slideDown().addClass( 'pods-dependent-visible' );
-                            $el.find( '.pods-dependency .pods-depends-on' ).hide();
-                            $el.find( '.pods-dependency .pods-excludes-on' ).hide();
+                            $dependent_el.slideDown().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency .pods-excludes-on' ).hide();
 
-                            $el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
+                            $dependent_el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
                                 $( this ).trigger( 'change' );
                             } );
                         }
-                        else if ( $el.is( dependent_specific ) ) {
-                            $el.slideDown().addClass( 'pods-dependent-visible' );
-                            $el.find( '.pods-dependency .pods-depends-on' ).hide();
-                            $el.find( '.pods-dependency .pods-excludes-on' ).hide();
+                        else if ( $dependent_el.is( dependent_specific ) ) {
+                            $dependent_el.slideDown().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency .pods-excludes-on' ).hide();
 
-                            $el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
+                            $dependent_el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
                                 $( this ).trigger( 'change' );
                             } );
                         }
                         else
-                            $el.slideUp().removeClass( 'pods-dependent-visible' );
+                            $dependent_el.slideUp().removeClass( 'pods-dependent-visible' );
                     }
                     else {
                         if ( $field.is( 'input[type=checkbox]' ) && $field.is( ':checked' ) ) {
-                            $el.show().addClass( 'pods-dependent-visible' );
-                            $el.find( '.pods-dependency .pods-depends-on' ).hide();
-                            $el.find( '.pods-dependency .pods-excludes-on' ).hide();
+                            $dependent_el.show().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency .pods-excludes-on' ).hide();
 
-                            $el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
+                            $dependent_el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
                                 $( this ).trigger( 'change' );
                             } );
                         }
-                        else if ( $el.is( dependent_specific ) ) {
-                            $el.show().addClass( 'pods-dependent-visible' );
-                            $el.find( '.pods-dependency .pods-depends-on' ).hide();
-                            $el.find( '.pods-dependency .pods-excludes-on' ).hide();
+                        else if ( $dependent_el.is( dependent_specific ) ) {
+                            $dependent_el.show().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency .pods-excludes-on' ).hide();
 
-                            $el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
+                            $dependent_el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
                                 $( this ).trigger( 'change' );
                             } );
                         }
                         else
-                            $el.hide().removeClass( 'pods-dependent-visible' );
+                            $dependent_el.hide().removeClass( 'pods-dependent-visible' );
                     }
                 } );
 
@@ -608,51 +671,101 @@
                 var exclude_specific = exclude_flag + '-' + $el.val();
 
                 $current.find( exclude_flag ).each( function () {
-                    var $el = $( this );
+                    var $dependent_el = $( this );
 
-                    if ( $el.parent().is( ':visible' ) ) {
+                    if ( $dependent_el.parent().is( ':visible' ) ) {
                         if ( $field.is( 'input[type=checkbox]' ) && $field.is( ':checked' ) )
-                            $el.slideUp().removeClass( 'pods-dependent-visible' );
-                        else if ( $el.is( exclude_specific ) )
-                            $el.slideUp().removeClass( 'pods-dependent-visible' );
+                            $dependent_el.slideUp().removeClass( 'pods-dependent-visible' );
+                        else if ( $dependent_el.is( exclude_specific ) )
+                            $dependent_el.slideUp().removeClass( 'pods-dependent-visible' );
                         else {
-                            $el.slideDown().addClass( 'pods-dependent-visible' );
-                            $el.find( '.pods-dependency .pods-depends-on' ).hide();
-                            $el.find( '.pods-dependency .pods-excludes-on' ).hide();
+                            $dependent_el.slideDown().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency .pods-excludes-on' ).hide();
 
-                            $el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
+                            $dependent_el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
                                 $( this ).trigger( 'change' );
                             } );
                         }
                     }
                     else {
                         if ( $field.is( 'input[type=checkbox]' ) && $field.is( ':checked' ) )
-                            $el.hide().removeClass( 'pods-dependent-visible' );
-                        else if ( $el.is( exclude_specific ) )
-                            $el.hide().removeClass( 'pods-dependent-visible' );
+                            $dependent_el.hide().removeClass( 'pods-dependent-visible' );
+                        else if ( $dependent_el.is( exclude_specific ) )
+                            $dependent_el.hide().removeClass( 'pods-dependent-visible' );
                         else {
-                            $el.show().addClass( 'pods-dependent-visible' );
-                            $el.find( '.pods-dependency .pods-depends-on' ).hide();
-                            $el.find( '.pods-dependency .pods-excludes-on' ).hide();
+                            $dependent_el.show().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency .pods-excludes-on' ).hide();
 
-                            $el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
+                            $dependent_el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
                                 $( this ).trigger( 'change' );
                             } );
                         }
                     }
                 } );
+
+                var wildcard_flag = '.pods-wildcard-on-' + $el.data( 'name-clean' );
+                var wildcard_value = $el.val();
+
+                $current.find( wildcard_flag ).each( function () {
+                    var $dependent_el = $( this );
+                    var wildcard = $dependent_el.data( 'wildcard' );
+
+                    if ( $dependent_el.parent().is( ':visible' ) ) {
+                        if ( null !== wildcard_value.match( wildcard ) ) {
+                            $dependent_el.slideDown().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency .pods-excludes-on' ).hide();
+                            $dependent_el.find( '.pods-dependency .pods-wildcard-on' ).hide();
+
+                            $dependent_el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
+                                $( this ).trigger( 'change' );
+                            } );
+
+                            if ( $dependent_el.is( '[data-dependency-trigger]' ) ) {
+                                var dependency_trigger = $dependent_el.data( 'dependency-trigger' );
+
+                                dependency_trigger = window[ dependency_trigger ];
+
+                                dependency_trigger( $dependent_el );
+                            }
+                        }
+                        else
+                            $dependent_el.slideUp().removeClass( 'pods-dependent-visible' );
+                    }
+                    else {
+                        if ( null !== wildcard_value.match( wildcard ) ) {
+                            $dependent_el.show().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency .pods-excludes-on' ).hide();
+                            $dependent_el.find( '.pods-dependency .pods-wildcard-on' ).hide();
+
+                            $dependent_el.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
+                                $( this ).trigger( 'change' );
+                            } );
+
+                            if ( $dependent_el.is( '[data-dependency-trigger]' ) ) {
+                                var dependency_trigger = $dependent_el.data( 'dependency-trigger' );
+
+                                dependency_trigger = window[ dependency_trigger ];
+
+                                dependency_trigger( $dependent_el );
+                            }
+                        }
+                        else
+                            $dependent_el.hide().removeClass( 'pods-dependent-visible' );
+                    }
+                } );
             } );
 
-            $( '.pods-dependency .pods-dependent-toggle' ).each( function () {
-                $( this ).change();
-            } );
         },
         dependency_tabs : function () {
             // Hide all dependents
             $( '.pods-dependency-tabs .pods-depends-on' ).hide();
 
             // Handle dependent toggle
-            $( document ).on( 'click', '.pods-dependency-tabs .pods-dependent-tab', function ( e ) {
+            $( '.pods-admin' ).on( 'click', '.pods-dependency-tabs .pods-dependent-tab', function ( e ) {
                 var $el = $( this );
                 var $current = $el.closest( '.pods-dependency-tabs' );
                 var $field = $el;
@@ -661,51 +774,51 @@
                 var dependent_specific = dependent_flag + '-' + $el.val();
 
                 $current.find( dependent_flag ).each( function () {
-                    var $s_el = $( this );
+                    var $dependent_el = $( this );
 
-                    if ( $s_el.parent().is( ':visible' ) ) {
+                    if ( $dependent_el.parent().is( ':visible' ) ) {
                         if ( $field.is( 'input[type=checkbox]' ) && $field.is( ':checked' ) ) {
-                            $s_el.slideDown().addClass( 'pods-dependent-visible' );
-                            $s_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
-                            $s_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
+                            $dependent_el.slideDown().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
 
-                            $s_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
+                            $dependent_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
                                 $( this ).trigger( 'click' );
                             } );
                         }
-                        else if ( $s_el.is( dependent_specific ) ) {
-                            $s_el.slideDown().addClass( 'pods-dependent-visible' );
-                            $s_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
-                            $s_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
+                        else if ( $dependent_el.is( dependent_specific ) ) {
+                            $dependent_el.slideDown().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
 
-                            $s_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
+                            $dependent_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
                                 $( this ).trigger( 'click' );
                             } );
                         }
                         else
-                            $s_el.slideUp().removeClass( 'pods-dependent-visible' );
+                            $dependent_el.slideUp().removeClass( 'pods-dependent-visible' );
                     }
                     else {
                         if ( $field.is( 'input[type=checkbox]' ) && $field.is( ':checked' ) ) {
-                            $s_el.show().addClass( 'pods-dependent-visible' );
-                            $s_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
-                            $s_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
+                            $dependent_el.show().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
 
-                            $s_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
+                            $dependent_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
                                 $( this ).trigger( 'click' );
                             } );
                         }
-                        else if ( $s_el.is( dependent_specific ) ) {
-                            $s_el.show().addClass( 'pods-dependent-visible' );
-                            $s_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
-                            $s_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
+                        else if ( $dependent_el.is( dependent_specific ) ) {
+                            $dependent_el.show().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
 
-                            $s_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
+                            $dependent_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
                                 $( this ).trigger( 'click' );
                             } );
                         }
                         else
-                            $s_el.hide().removeClass( 'pods-dependent-visible' );
+                            $dependent_el.hide().removeClass( 'pods-dependent-visible' );
                     }
                 } );
 
@@ -713,34 +826,34 @@
                 var exclude_specific = exclude_flag + '-' + $el.val();
 
                 $current.find( exclude_flag ).each( function () {
-                    var $s_el = $( this );
+                    var $dependent_el = $( this );
 
-                    if ( $s_el.parent().is( ':visible' ) ) {
+                    if ( $dependent_el.parent().is( ':visible' ) ) {
                         if ( $field.is( 'input[type=checkbox]' ) && $field.is( ':checked' ) )
-                            $s_el.slideUp().removeClass( 'pods-dependent-visible' );
-                        else if ( $s_el.is( exclude_specific ) )
-                            $s_el.slideUp().removeClass( 'pods-dependent-visible' );
+                            $dependent_el.slideUp().removeClass( 'pods-dependent-visible' );
+                        else if ( $dependent_el.is( exclude_specific ) )
+                            $dependent_el.slideUp().removeClass( 'pods-dependent-visible' );
                         else {
-                            $s_el.slideDown().addClass( 'pods-dependent-visible' );
-                            $s_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
-                            $s_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
+                            $dependent_el.slideDown().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
 
-                            $s_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
+                            $dependent_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
                                 $( this ).trigger( 'click' );
                             } );
                         }
                     }
                     else {
                         if ( $field.is( 'input[type=checkbox]' ) && $field.is( ':checked' ) )
-                            $s_el.hide().removeClass( 'pods-dependent-visible' );
-                        else if ( $s_el.is( exclude_specific ) )
-                            $s_el.hide().removeClass( 'pods-dependent-visible' );
+                            $dependent_el.hide().removeClass( 'pods-dependent-visible' );
+                        else if ( $dependent_el.is( exclude_specific ) )
+                            $dependent_el.hide().removeClass( 'pods-dependent-visible' );
                         else {
-                            $s_el.show().addClass( 'pods-dependent-visible' );
-                            $s_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
-                            $s_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
+                            $dependent_el.show().addClass( 'pods-dependent-visible' );
+                            $dependent_el.find( '.pods-dependency-tabs .pods-depends-on' ).hide();
+                            $dependent_el.find( '.pods-dependency-tabs .pods-excludes-on' ).hide();
 
-                            $s_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
+                            $dependent_el.find( '.pods-dependency-tabs .pods-dependent-tab.pods-dependent-tab-active' ).each( function () {
                                 $( this ).trigger( 'click' );
                             } );
                         }
@@ -767,7 +880,7 @@
         advanced : function () {
             $( '.pods-advanced' ).hide();
 
-            $( document ).on( 'click', '.pods-advanced-toggle', function ( e ) {
+            $( '.pods-admin' ).on( 'click', '.pods-advanced-toggle', function ( e ) {
                 $advanced = $( this ).closest( 'div' ).find( '.pods-advanced' );
 
                 if ( $advanced.is( ':visible' ) ) {
@@ -782,7 +895,12 @@
                 e.preventDefault();
             } );
         },
-        collapsible : function () {
+        collapsible : function ( row ) {
+            var new_row = row;
+
+            if ( new_row[ 0 ] )
+                new_row = new_row.html();
+
             // Hide all rows
             $( 'div.pods-manage-row-wrapper' ).hide();
 
@@ -797,105 +915,276 @@
                 var $row_label = $row.find( 'td.pods-manage-row-label' );
                 var $row_content = $row_label.find( 'div.pods-manage-row-wrapper' );
 
-                if ( 'undefined' == typeof orig_fields[$row.data( 'id' )] )
-                    orig_fields[$row.data( 'id' )] = {};
+                if ( 'undefined' == typeof orig_fields[ $row.data( 'id' ) ] )
+                    orig_fields[ $row.data( 'id' ) ] = {};
 
                 // Row active, hide it
                 if ( $row_content.is( ':visible' ) ) {
-                    $row_content.find( 'input, select' ).each( function () {
-                        $( this ).val( orig_fields[$row.data( 'id' )][$( this ).prop( 'name' )] );
-                    } );
+                    if ( !$row.hasClass( 'pods-field-new' ) ) {
+                        $row_content.slideUp( 'slow', function () {
+                            $row.toggleClass( 'pods-manage-row-expanded' );
+                            $row_label.prop( 'colspan', '1' );
 
-                    $row_content.slideUp( 'slow', function () {
-                        $row.toggleClass( 'pods-manage-row-expanded' );
-                        $row_label.prop( 'colspan', '1' );
-                    } );
+                            $row_content.find( 'input, select, textarea' ).each( function () {
+                                if ( 'undefined' != typeof orig_fields[ $row.data( 'id' ) ][ $( this ).prop( 'name' ) ] ) {
+                                    if ( $( this ).is( 'input[type=checkbox]' ) )
+                                        $( this ).prop( 'checked', orig_fields[ $row.data( 'id' ) ][ $( this ).prop( 'name' ) ] );
+                                    else
+                                        $( this ).val( orig_fields[ $row.data( 'id' ) ][ $( this ).prop( 'name' ) ] );
+                                }
+                            } );
+                        } );
+                    }
+                    else {
+                        var $tbody = $( this ).closest( 'tbody.pods-manage-list' );
+
+                        $row.animate( {backgroundColor : '#B80000'} );
+
+                        $row.fadeOut( 'slow', function () {
+                            $( this ).remove();
+                            if ( 0 == $( 'tbody.pods-manage-list tr.pods-manage-row' ).length )
+                                $tbody.find( 'tr.no-items' ).show();
+                        } );
+
+                        if ( $.fn.sortable && $tbody.hasClass( 'pods-manage-sortable' ) )
+                            $( this ).closest( 'tbody.pods-manage-list' ).sortable( 'refresh' );
+                    }
                 }
                 // Row inactive, show it
                 else {
-                    $row_content.find( 'input, select' ).each( function () {
-                        orig_fields[$row.data( 'id' )][$( this ).prop( 'name' )] = $( this ).val();
-                    } );
+                    if ( $row.hasClass( 'pods-field-init' ) && 'undefined' != typeof new_row && null !== new_row ) {
+                        var row_counter = $row.data( 'row' );
+
+                        var edit_row = new_row.replace( /\_\_1/gi, row_counter ).replace( /\-\-1/gi, row_counter );
+                        var $field_wrapper = $row_content.find( 'div.pods-manage-field' );
+
+                        $field_wrapper.append( edit_row );
+
+                        $field_wrapper.find( '.pods-depends-on' ).hide();
+                        $field_wrapper.find( '.pods-excludes-on' ).hide();
+
+                        $field_wrapper.find( '.pods-dependent-toggle' ).each( function () {
+                            $( this ).trigger( 'change' );
+                        } );
+
+                        var field_data = jQuery.parseJSON( $row_content.find( 'input.field_data' ).val() );
+
+                        var field_array_counter = 0;
+
+                        $field_wrapper.find( 'input, select, textarea' ).each( function () {
+                            json_name = $( this ).prop( 'name' ).replace( 'field_data[' + row_counter + '][', '' ).replace( '[', '' ).replace( ']', '' );
+
+                            if ( 0 < $( this ).prop( 'name' ).indexOf( '[]' ) ) {
+                                if ( 'undefined' != typeof field_data[ json_name ] && 'undefined' != typeof field_data[ json_name ][ field_array_counter ] ) {
+                                    if ( $( this ).is( 'input[type=checkbox]' ) ) {
+                                        $( this ).prop( 'checked', ( $( this ).val() == field_data[ json_name ][ field_array_counter ] ) );
+
+                                        orig_fields[ $row.data( 'id' ) ][ $( this ).prop( 'name' ) ] = $( this ).prop( 'checked' );
+                                    }
+                                    else {
+                                        $( this ).val( field_data[ json_name ][ field_array_counter ] );
+
+                                        orig_fields[ $row.data( 'id' ) ][ $( this ).prop( 'name' ) ] = $( this ).val();
+                                    }
+                                }
+
+                                field_array_counter++;
+                            }
+                            else {
+                                field_array_counter = 0;
+
+                                if ( 'undefined' != typeof field_data[ json_name ] ) {
+                                    if ( $( this ).is( 'input[type=checkbox]' ) ) {
+                                        $( this ).prop( 'checked', ( $( this ).val() == field_data[ json_name ] ) );
+
+                                        orig_fields[ $row.data( 'id' ) ][ $( this ).prop( 'name' ) ] = $( this ).prop( 'checked' );
+                                    }
+                                    else {
+                                        $( this ).val( field_data[ json_name ] );
+
+                                        orig_fields[ $row.data( 'id' ) ][ $( this ).prop( 'name' ) ] = $( this ).val();
+                                    }
+                                }
+                            }
+                        } );
+
+                        $field_wrapper.find( '.pods-tabbed ul.pods-tabs .pods-tab:first a' ).addClass( 'selected' );
+                        $field_wrapper.find( '.pods-tabbed .pods-tab-group .pods-tab:first' ).show();
+
+                        $row.removeClass( 'pods-field-init' );
+
+                        $( document ).Pods('qtip', $row);
+                    }
+                    else {
+                       $row_content.find( 'input, select, textarea' ).each( function () {
+                           if ( $( this ).is( 'input[type=checkbox]' ) )
+                               orig_fields[ $row.data( 'id' ) ][ $( this ).prop( 'name' ) ] = $( this ).prop( 'checked' );
+                           else
+                               orig_fields[ $row.data( 'id' ) ][ $( this ).prop( 'name' ) ] = $( this ).val();
+                        } );
+                    }
 
                     $row.toggleClass( 'pods-manage-row-expanded' );
                     $row_label.prop( 'colspan', '3' );
                     $row_content.slideDown();
+                    $row_content.find('.pods-dependency .pods-dependent-toggle' ).each( function () {
+                       $( this ).trigger( 'change' );
+                    } );
                 }
 
                 $( this ).css( 'cursor', 'pointer' );
                 $( this ).prop( 'disabled', false );
 
                 e.preventDefault();
-            } );
-
+            } )
             // Handle 'Save' action
-            $( 'tbody.pods-manage-list' ).on( 'click', '.pods-manage-row-save a.button-primary', function ( e ) {
+            .on( 'click', '.pods-manage-row-save a.button-primary', function ( e ) {
                 $( this ).css( 'cursor', 'default' );
                 $( this ).prop( 'disabled', true );
 
                 var $row = $( this ).closest( 'tr.pods-manage-row' );
                 var $row_label = $row.find( 'td.pods-manage-row-label' );
                 var $row_content = $row_label.find( 'div.pods-manage-row-wrapper' );
-                var color = $.curCSS( $row.get( 0 ), 'backgroundColor' );
+                var $field_wrapper = $row_content.find( 'div.pods-manage-field' );
+                var $row_value = $row_content.find( 'input.field_data' ).val();
+                var color = $.css( $row.get( 0 ), 'backgroundColor' );
                 var row_id = $row.data( 'row' );
+                var field_data = {};
 
-                $row.css( 'backgroundColor', '#FFFF33' ).animate(
-                    { backgroundColor : color },
-                    {
-                        duration : 'slow',
-                        complete : function () {
-                            $( this ).css( 'backgroundColor', '' );
+                if ( 'undefined' != typeof $row_value && null != $row_value && '' != $row_value ) {
+                    field_data = jQuery.parseJSON( $row_value);
+                }
+
+                var valid_form = true;
+
+                $field_wrapper.find( 'input, select, textarea' ).each( function () {
+                    var $el = $( this );
+
+                    if ( '' != $el.prop( 'name' ) ) {
+                        // TinyMCE support
+                        if ( 'object' == typeof( tinyMCE ) && -1 < $el.prop( 'class' ).indexOf( 'pods-ui-field-tinymce' ) ) {
+                            var ed = tinyMCE.get( $el.prop( 'id' ) );
+
+                            $el.val( ed.getContent() );
                         }
-                    }
-                );
 
-                if ( 'undefined' != typeof pods_field_types && null !== pods_field_types ) {
-                    $row.find( 'td.pods-manage-row-label a.row-label' ).html( $row_content.find( 'input#pods-form-ui-field-data-' + row_id + '-label' ).val() );
+                        var val = $el.val();
 
-                    if ( $row_content.find( 'input#pods-form-ui-field-data-' + row_id + '-required' ).is( ':checked' ) )
-                        $row.find( 'td.pods-manage-row-label abbr.required' ).show();
-                    else
-                        $row.find( 'td.pods-manage-row-label abbr.required' ).hide();
+                        if ( $el.is( 'input[type=checkbox]' ) && !$el.is( ':checked' ) )
+                            val = 0;
+                        else if ( $el.is( 'input[type=radio]' ) && !$el.is( ':checked' ) )
+                            val = '';
 
-                    $row.find( 'td.pods-manage-row-name a' ).html( $row_content.find( 'input#pods-form-ui-field-data-' + row_id + '-name' ).val() );
+                        if ( $el.is( ':visible' ) && $el.hasClass( 'pods-validate pods-validate-required' ) && ('' == $el.val() || 0 == $el.val()) ) {
+                            $el.trigger( 'change' );
 
-                    var field_type = $row_content.find( 'select#pods-form-ui-field-data-' + row_id + '-type' ).val();
-                    var pick_object = $row_content.find( 'select#pods-form-ui-field-data-' + row_id + '-pick-object' ).val();
-                    var field_type_desc = '';
+                            if ( false !== valid_form )
+                                $el.focus();
 
-                    if ( 'pick' == field_type && 0 != pick_object ) {
-                        $.each( pods_pick_objects, function ( i, n ) {
-                            if ( pick_object == i ) {
-                                field_type_desc = '<br /><span class="pods-manage-field-type-desc">&rsaquo; ' + n + '</span>';
+                            $el.addClass( 'pods-validate-error' );
+
+                            valid_form = false;
+                        }
+                        else {
+                            $el.parent().find( '.pods-validate-error-message' ).remove();
+                            $el.removeClass( 'pods-validate-error' );
+                        }
+
+                        field_name = $el.prop( 'name' );
+
+                        var field_array = field_name.match( /\[(\w*|)\]/gi ),
+                            field_name = '';
+
+                        for ( var i in field_array ) {
+                            the_field = field_array[ i ].replace( '[', '' ).replace( ']', '' );
+
+                            if ( 1 == i ) {
+                                field_name = the_field;
+
+                                if ( 2 == field_array.length )
+                                    field_data[ field_name ] = val;
+                            }
+                            else if ( 2 == i ) {
+                                the_field = parseInt( the_field );
+
+                                if ( 'NaN' == the_field )
+                                    field_data[ field_name ] = val;
+                                else {
+                                    if ( 'undefined' == typeof field_data[ field_name ] )
+                                        field_data[ field_name ] = {};
+
+                                    while ( 'undefined' != typeof( field_data[ field_name ][ the_field ] ) ) {
+                                        the_field++;
+                                    }
+
+                                    field_data[ field_name ][ the_field ] = val;
+                                }
+                            }
+                        }
+                     }
+                 } );
+
+                if ( valid_form ) {
+                    $row_content.find( 'input.field_data' ).val( $.toJSON( field_data ) );
+
+                    $row.css( 'backgroundColor', '#FFFF33' ).animate(
+                        { backgroundColor : color },
+                        {
+                            duration : 'slow',
+                            complete : function () {
+                                $( this ).css( 'backgroundColor', '' );
+                            }
+                        }
+                    );
+
+                    if ( 'undefined' != typeof pods_field_types && null !== pods_field_types ) {
+                        $row.find( 'td.pods-manage-row-label a.row-label' ).html( $row_content.find( 'input#pods-form-ui-field-data-' + row_id + '-label' ).val() );
+
+                        if ( $row_content.find( 'input#pods-form-ui-field-data-' + row_id + '-required' ).is( ':checked' ) )
+                           $row.find( 'td.pods-manage-row-label abbr.required' ).show();
+                        else
+                           $row.find( 'td.pods-manage-row-label abbr.required' ).hide();
+
+                        $row.find( 'td.pods-manage-row-name a' ).html( $row_content.find( 'input#pods-form-ui-field-data-' + row_id + '-name' ).val() );
+
+                        var field_type = $row_content.find( 'select#pods-form-ui-field-data-' + row_id + '-type' ).val();
+                        var pick_object = $row_content.find( 'select#pods-form-ui-field-data-' + row_id + '-pick-object' ).val();
+                        var field_type_desc = '';
+
+                        if ( 'pick' == field_type && 0 != pick_object ) {
+                           $.each( pods_pick_objects, function ( i, n ) {
+                                if ( pick_object == i ) {
+                                    field_type_desc = '<br /><span class="pods-manage-field-type-desc">&rsaquo; ' + n + '</span>';
+                                    return false;
+                                }
+                            } );
+                        }
+                        $.each( pods_field_types, function ( i, n ) {
+                            if ( field_type == i ) {
+                                field_type = n;
                                 return false;
                             }
                         } );
+
+                        $row.find( 'td.pods-manage-row-type' ).html( field_type
+                            + field_type_desc
+                            + ' <span class="pods-manage-row-more">[type: ' + $row_content.find( 'select#pods-form-ui-field-data-' + row_id + '-type' ).val() + ']</span>' );
                     }
-                    $.each( pods_field_types, function ( i, n ) {
-                        if ( field_type == i ) {
-                            field_type = n;
-                            return false;
-                        }
+
+                    $row_content.slideUp( 'slow', function () {
+                        $row.toggleClass( 'pods-manage-row-expanded' );
+                        $row_label.prop( 'colspan', '1' );
+                        $row.removeClass( 'pods-field-new' );
                     } );
-
-                    $row.find( 'td.pods-manage-row-type' ).html( field_type
-                        + field_type_desc
-                        + ' <span class="pods-manage-row-more">[type: ' + $row_content.find( 'select#pods-form-ui-field-data-' + row_id + '-type' ).val() + ']</span>' );
                 }
-
-                $row_content.slideUp( 'slow', function () {
-                    $row.toggleClass( 'pods-manage-row-expanded' );
-                    $row_label.prop( 'colspan', '1' );
-                } );
 
                 $( this ).css( 'cursor', 'pointer' );
                 $( this ).prop( 'disabled', false );
 
                 e.preventDefault();
-            } );
-
+            } )
             // Handle 'Cancel' action
-            $( 'tbody.pods-manage-list' ).on( 'click', '.pods-manage-row-actions a.pods-manage-row-cancel', function ( e ) {
+            .on( 'click', '.pods-manage-row-actions a.pods-manage-row-cancel', function ( e ) {
                 $( this ).closest( 'tr.pods-manage-row' ).find( 'a.pods-manage-row-edit' ).click();
 
                 e.preventDefault();
@@ -932,7 +1221,7 @@
                     var $tbody = $( this ).parent().parent().find( 'tbody.pods-manage-list' );
 
                     $tbody.find( 'tr.no-items' ).hide();
-                    $tbody.append( '<tr id="row-' + row_counter + '" class="pods-manage-row pods-field-' + row_counter + ' pods-submittable-fields" valign="top">' + add_row + '</tr>' );
+                    $tbody.append( '<tr id="row-' + row_counter + '" class="pods-manage-row pods-field-new pods-field-' + row_counter + ' pods-submittable-fields" valign="top">' + add_row + '</tr>' );
 
                     $new_row = $tbody.find( 'tr#row-' + row_counter );
 
@@ -941,21 +1230,36 @@
                     $new_row.find( '.pods-dependency .pods-excludes-on' ).hide();
 
                     $new_row.find( '.pods-dependency .pods-dependent-toggle' ).each( function () {
-                        $( this ).trigger( 'change' );
+                       $( this ).trigger( 'change' );
                     } );
 
                     $new_row.find( '.pods-manage-row-wrapper' ).hide( 0, function () {
-                        $new_row.find( 'a.row-label.pods-manage-row-edit' ).click();
+                       $new_row.find( 'a.row-label.pods-manage-row-edit' ).click();
                     } );
 
                     $( '.pods-tabs .pods-tab:first a', $new_row ).addClass( 'selected' );
                     $( '.pods-tab-group', $new_row ).find( '.pods-tab:first' ).show();
 
                     if ( $.fn.sortable && $tbody.hasClass( 'pods-manage-sortable' ) )
-                        $tbody.sortable( 'refresh' );
+                       $tbody.sortable( 'refresh' );
+
+                    var sluggables = [];
+
+                    $( 'tr#row-' + row_counter + ' .pods-slugged[data-sluggable], tr#row-' + row_counter + ' .pods-slugged-lower[data-sluggable]' ).each( function () {
+                        if ( -1 == sluggables.indexOf( $( this ).data( 'sluggable' ) ) )
+                            sluggables.push( $( this ).data( 'sluggable' ) );
+                    } );
+
+                    for ( var i in sluggables ) {
+                        var sluggable = sluggables[ i ];
+
+                        methods[ 'sluggable_single' ]( sluggable );
+                    }
 
                     $( this ).css( 'cursor', 'pointer' );
                     $( this ).prop( 'disabled', false );
+
+                    $(document ).Pods('qtip',$new_row);
 
                     e.preventDefault();
                 } );
@@ -974,13 +1278,15 @@
                     $row.animate( {backgroundColor : '#B80000'} );
 
                     $row.fadeOut( 'slow', function () {
-                        $( this ).remove();
+                       $( this ).remove();
                         if ( 0 == $( 'tbody.pods-manage-list tr.pods-manage-row' ).length )
                             $tbody.find( 'tr.no-items' ).show();
                     } );
 
                     if ( $.fn.sortable && $tbody.hasClass( 'pods-manage-sortable' ) )
-                        $( this ).closest( 'tbody.pods-manage-list' ).sortable( 'refresh' );
+                       $( this ).closest( 'tbody.pods-manage-list' ).sortable( 'refresh' );
+
+                    pods_changed = true;
 
                     //row_counter--;
                 }
@@ -1008,6 +1314,31 @@
                         return 'Navigating away from this page will discard any changes you have made.';
                 }
             } );
+        },
+        qtip: function(element) {
+            $( element ).find('.pods-qtip').qtip( {
+                content : {
+                    attr : 'alt'
+                },
+                style : {
+                    classes : 'ui-tooltip-light ui-tooltip-shadow ui-tooltip-rounded'
+                },
+                show : {
+                    effect : function ( offset ) {
+                        $( this ).fadeIn( 'fast' );
+                    }
+                },
+                hide : {
+                    fixed : true,
+                    delay : 300
+                },
+                position : {
+                    my : 'bottom left',
+                    adjust : {
+                        y : -14
+                    }
+                }
+            } );
         }
     };
 
@@ -1017,8 +1348,8 @@
         }
         // Don't need this part (yet)
         /*
-         else if (typeof method === 'object' || !method) {
-         return methods.init.apply(this, arguments);
+        else if (typeof method === 'object' || !method) {
+        return methods.init.apply(this, arguments);
          }
          */
         else {
@@ -1027,28 +1358,3 @@
     };
 })( jQuery );
 
-jQuery( function ( $ ) {
-    $( '.pods-qtip' ).qtip( {
-        content : {
-            attr : 'alt'
-        },
-        style : {
-            classes : 'ui-tooltip-light ui-tooltip-shadow ui-tooltip-rounded'
-        },
-        show : {
-            effect : function ( offset ) {
-                $( this ).fadeIn( 'fast' );
-            }
-        },
-        hide : {
-            fixed : true,
-            delay : 300
-        },
-        position : {
-            my : 'bottom left',
-            adjust : {
-                y : -14
-            }
-        }
-    } );
-} );

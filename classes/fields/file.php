@@ -1,4 +1,7 @@
 <?php
+/**
+ * @package Pods\Fields
+ */
 class PodsField_File extends PodsField {
 
     /**
@@ -55,16 +58,26 @@ class PodsField_File extends PodsField {
             ),
             'file_uploader' => array(
                 'label' => __( 'File Uploader', 'pods' ),
-                'default' => 'plupload',
+                'default' => 'attachment',
                 'type' => 'pick',
                 'data' => apply_filters(
                     'pods_form_ui_field_file_uploader_options',
                     array(
-                        'plupload' => __( 'Plupload', 'pods' ),
-                        'attachment' => __( 'Attachments (WP Media Library)', 'pods' )
+                        'attachment' => __( 'Attachments (WP Media Library)', 'pods' ),
+                        'plupload' => __( 'Plupload', 'pods' )
                     )
                 ),
                 'dependency' => true
+            ),
+            'file_attachment_tab' => array(
+                'label' => __( 'Attachments Default Tab', 'pods' ),
+                'depends-on' => array( 'file_uploader' => 'attachment' ),
+                'default' => 'type',
+                'type' => 'pick',
+                'data' => array(
+                    'type' => __( 'Upload File', 'pods' ),
+                    'library' => __( 'Media Library', 'pods' )
+                )
             ),
             'file_edit_title' => array(
                 'label' => __( 'Editable Title', 'pods' ),
@@ -79,11 +92,13 @@ class PodsField_File extends PodsField {
             ),
             'file_restrict_filesize' => array(
                 'label' => __( 'Restrict File Size', 'pods' ),
+                'excludes-on' => array( 'file_uploader' => 'attachment' ),
                 'default' => '10MB',
                 'type' => 'text'
             ),
             'file_type' => array(
                 'label' => __( 'Restrict File Types', 'pods' ),
+                'excludes-on' => array( 'file_uploader' => 'attachment' ),
                 'default' => 'images',
                 'type' => 'pick',
                 'data' => apply_filters(
@@ -91,6 +106,7 @@ class PodsField_File extends PodsField {
                     array(
                         'images' => __( 'Images (jpg, png, gif)', 'pods' ),
                         'video' => __( 'Video (mpg, mov, flv, mp4)', 'pods' ),
+                        'any' => __( 'Any Type (no restriction)', 'pods' ),
                         'other' => __( 'Other (customize allowed extensions)', 'pods' )
                     )
                 ),
@@ -100,9 +116,10 @@ class PodsField_File extends PodsField {
                 'label' => __( 'Allowed File Extensions', 'pods' ),
                 'description' => __( 'Separate file extensions with a comma (ex. jpg,png,mp4,mov)', 'pods' ),
                 'depends-on' => array( 'file_type' => 'other' ),
+                'excludes-on' => array( 'file_uploader' => 'attachment' ),
                 'default' => '',
                 'type' => 'text'
-            ),
+            )/*,
             'file_image_size' => array(
                 'label' => __( 'Excluded Image Sizes', 'pods' ),
                 'description' => __( 'Image sizes not to generate when processing the image', 'pods' ),
@@ -115,7 +132,7 @@ class PodsField_File extends PodsField {
                     'pods_form_ui_field_file_image_size_options',
                     $image_sizes
                 )
-            )
+            )*/
         );
         return $options;
     }
@@ -140,10 +157,10 @@ class PodsField_File extends PodsField {
      * @param mixed $value
      * @param string $name
      * @param array $options
-     * @param array $fields
      * @param array $pod
      * @param int $id
      *
+     * @return mixed|null
      * @since 2.0.0
      */
     public function display ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
@@ -164,6 +181,13 @@ class PodsField_File extends PodsField {
     public function input ( $name, $value = null, $options = null, $pod = null, $id = null ) {
         $options = (array) $options;
 
+        if ( !is_admin() ) {
+            include_once( ABSPATH . '/wp-admin/includes/template.php' );
+
+            if ( is_multisite() )
+                include_once( ABSPATH . '/wp-admin/includes/ms.php' );
+        }
+
         if ( ( ( defined( 'PODS_DISABLE_FILE_UPLOAD' ) && true === PODS_DISABLE_FILE_UPLOAD )
                || ( defined( 'PODS_UPLOAD_REQUIRE_LOGIN' ) && is_bool( PODS_UPLOAD_REQUIRE_LOGIN ) && true === PODS_UPLOAD_REQUIRE_LOGIN && !is_user_logged_in() )
                || ( defined( 'PODS_UPLOAD_REQUIRE_LOGIN' ) && !is_bool( PODS_UPLOAD_REQUIRE_LOGIN ) && ( !is_user_logged_in() || !current_user_can( PODS_UPLOAD_REQUIRE_LOGIN ) ) ) )
@@ -171,9 +195,9 @@ class PodsField_File extends PodsField {
                   || ( defined( 'PODS_FILES_REQUIRE_LOGIN' ) && is_bool( PODS_FILES_REQUIRE_LOGIN ) && true === PODS_FILES_REQUIRE_LOGIN && !is_user_logged_in() )
                   || ( defined( 'PODS_FILES_REQUIRE_LOGIN' ) && !is_bool( PODS_FILES_REQUIRE_LOGIN ) && ( !is_user_logged_in() || !current_user_can( PODS_FILES_REQUIRE_LOGIN ) ) ) )
         ) {
-?>
-    <p>You do not have access to upload / browse files. Contact your website admin to resolve.</p>
-<?php
+            ?>
+        <p>You do not have access to upload / browse files. Contact your website admin to resolve.</p>
+        <?php
             return;
         }
 
@@ -200,6 +224,7 @@ class PodsField_File extends PodsField {
      * @param string $pod
      * @param int $id
      *
+     * @return bool
      * @since 2.0.0
      */
     public function regex ( $value = null, $name = null, $options = null, $pod = null, $id = null ) {
@@ -215,7 +240,9 @@ class PodsField_File extends PodsField {
      * @param array $fields
      * @param array $pod
      * @param int $id
+     * @param null $params
      *
+     * @return bool
      * @since 2.0.0
      */
     public function validate ( &$value, $name = null, $options = null, $fields = null, $pod = null, $id = null, $params = null ) {
@@ -235,6 +262,7 @@ class PodsField_File extends PodsField {
      * @param array $pod
      * @param object $params
      *
+     * @return mixed
      * @since 2.0.0
      */
     public function pre_save ( $value, $id = null, $name = null, $options = null, $fields = null, $pod = null, $params = null ) {
@@ -261,10 +289,11 @@ class PodsField_File extends PodsField {
     /**
      * Perform actions before deleting from the DB
      *
-     * @param string $name
-     * @param string $pod
      * @param int $id
-     * @param object $api
+     * @param string $name
+     * @param null $options
+     * @param string $pod
+     * @return void
      *
      * @since 2.0.0
      */
@@ -296,11 +325,16 @@ class PodsField_File extends PodsField {
      * @param array $fields
      * @param array $pod
      *
+     * @return mixed|void
      * @since 2.0.0
      */
-    public function ui ( $id, &$value, $name = null, $options = null, $fields = null, $pod = null ) {
-        // link to file in new target
-        // show thumbnail
+    public function ui ( $id, $value, $name = null, $options = null, $fields = null, $pod = null ) {
+        if ( !empty( $value ) && isset( $value[ 'ID' ] ) )
+            $value = array( $value );
+
+        foreach ( $value as $v ) {
+            echo wp_get_attachment_image( $v[ 'ID' ], 'thumbnail', true );
+        }
     }
 
     /**
@@ -308,29 +342,33 @@ class PodsField_File extends PodsField {
      *
      * @param array $attributes
      * @param int $limit
+     * @param bool $editable
      * @param int $id
      * @param string $icon
      * @param string $name
      *
+     * @return string
      * @since 2.0.0
      */
     public function markup ( $attributes, $limit = 1, $editable = true, $id = null, $icon = null, $name = null ) {
         ob_start();
 
-        if ( empty ($id ) )
+        if ( empty ( $id ) )
             $id = '{{id}}';
 
         if ( empty ( $icon ) )
             $icon = '{{icon}}';
 
-        if ( empty ( $name ) )
+        if ( empty( $name ) )
             $name = '{{name}}';
-?>
+
+        $editable = (boolean) $editable;
+        ?>
     <li class="pods-file hidden" id="pods-file-{{id}}">
-        <input type="hidden" class="pods-file-id" name="<?php echo $attributes[ 'name' ]; ?>[{{id}}][id]" value="<?php echo $id; ?>" />
+        <?php echo PodsForm::field( $attributes[ 'name' ] . '[' . $id . '][id]', $id, 'hidden' ); ?>
 
         <ul class="pods-file-meta media-item">
-            <?php if ( 1 < $limit ) { ?>
+            <?php if ( 1 != $limit ) { ?>
                 <li class="pods-file-col pods-file-handle">Handle</li>
             <?php } ?>
 
@@ -340,17 +378,17 @@ class PodsField_File extends PodsField {
 
             <li class="pods-file-col pods-file-name">
                 <?php
-                    if ( $editable )
-                        echo PodsForm::field( $attributes[ 'name' ] . '[' . $id . '][id]', $name, 'text' );
-                    else
-                        echo ( empty( $name ) ? '{{name}}' : $name );
+                if ( $editable )
+                    echo PodsForm::field( $attributes[ 'name' ] . '[' . $id . '][title]', $name, 'text' );
+                else
+                    echo ( empty( $name ) ? '{{name}}' : $name );
                 ?>
             </li>
 
             <li class="pods-file-col pods-file-delete">Delete</li>
         </ul>
     </li>
-<?php
+    <?php
         return ob_get_clean();
     }
 }

@@ -1,4 +1,12 @@
 <?php
+/**
+ * @package Pods\Deprecated
+ */
+
+/**
+ *
+ */
+
 // JSON support
 if (!function_exists('json_encode')) {
     require_once(ABSPATH . '/wp-includes/js/tinymce/plugins/spellchecker/classes/utils/JSON.php');
@@ -52,14 +60,15 @@ function pod_query ($sql, $error = 'SQL failed', $results_error = null, $no_resu
 
     $sql = trim($sql);
     // Using @wp_users is deprecated! use $wpdb->users instead!
-    $sql = str_replace('@wp_users', $wpdb->users, $sql);
-    $sql = str_replace('@wp_', $wpdb->prefix, $sql);
-    $sql = str_replace('{prefix}', '@wp_', $sql);
+    $sql = str_replace( '@wp_pod_tbl_', $wpdb->prefix . 'pods_', $sql );
+    $sql = str_replace( '@wp_users', $wpdb->users, $sql );
+    $sql = str_replace( '@wp_', $wpdb->prefix, $sql );
+    $sql = str_replace( '{prefix}', '@wp_', $sql );
 
-    $sql = apply_filters('pod_query', $sql, $error, $results_error, $no_results_error);
+    $sql = apply_filters( 'pod_query', $sql, $error, $results_error, $no_results_error );
 
     // Return cached resultset
-    if ('SELECT' == substr($sql, 0, 6)) {
+    /*if ('SELECT' == substr($sql, 0, 6)) {
         $cache = PodCache::instance();
         if ($cache->cache_enabled && isset($cache->results[$sql])) {
             $result = $cache->results[$sql];
@@ -69,30 +78,27 @@ function pod_query ($sql, $error = 'SQL failed', $results_error = null, $no_resu
             $result = apply_filters('pod_query_return', $result, $sql, $error, $results_error, $no_results_error);
             return $result;
         }
-    }
+    }*/
+
     if (false !== $error)
         $result = mysql_query($sql, $wpdb->dbh) or die("<e>$error; SQL: $sql; Response: " . mysql_error($wpdb->dbh));
     else
         $result = @mysql_query($sql, $wpdb->dbh);
 
     if (0 < @mysql_num_rows($result)) {
-        if (!empty($results_error)) {
+        if (!empty($results_error))
             die("<e>$results_error");
-        }
     }
-    elseif (!empty($no_results_error)) {
+    elseif (!empty($no_results_error))
         die("<e>$no_results_error");
-    }
 
-    if ('INSERT' == substr($sql, 0, 6)) {
+    if ('INSERT' == substr($sql, 0, 6))
         $result = mysql_insert_id($wpdb->dbh);
-    }
-    elseif ('SELECT' == substr($sql, 0, 6)) {
-        if ('SELECT FOUND_ROWS()' != $sql) {
-            $cache->results[$sql] = $result;
-        }
-    }
+    /*elseif ('SELECT' == substr($sql, 0, 6) && 'SELECT FOUND_ROWS()' != $sql)
+        $cache->results[$sql] = $result;*/
+
     $result = apply_filters('pod_query_return', $result, $sql, $error, $results_error, $no_results_error);
+
     return $result;
 }
 
@@ -101,12 +107,78 @@ function pod_query ($sql, $error = 'SQL failed', $results_error = null, $no_resu
  *
  * @since 1.x
  * @deprecated deprecated since version 2.0.0
+ * @package Pods\Deprecated
  */
 class Pod
 {
+    private $new;
+
     function __construct ($type = null, $id = null) {
         pods_deprecated('Pod (class)', '2.0.0', 'pods (function)');
-        return pods($type, $id);
+
+        $this->new = pods( $type, $id );
+    }
+
+    /**
+     * Handle variables that have been deprecated
+     *
+     * @since 2.0.0
+     */
+    public function __get ( $name ) {
+        $name = (string) $name;
+
+        if ( 'data' == $name ) {
+            pods_deprecated( "Pods->{$name}", '2.0.0', "Pods->row()" );
+
+            $var = $this->new->row();
+        }
+        elseif ( '_data' == $name ) {
+            $var =& $this->new->data;
+        }
+        elseif ( 'total' == $name ) {
+            pods_deprecated( "Pods->{$name}", '2.0.0', "Pods->total()" );
+
+            $var = $this->new->total();
+        }
+        elseif ( 'total_rows' == $name ) {
+            pods_deprecated( "Pods->{$name}", '2.0.0', "Pods->total_found()" );
+
+            $var = $this->new->total_found();
+        }
+        elseif ( 'zebra' == $name ) {
+            pods_deprecated( "Pods->{$name}", '2.0.0', "Pods->zebra()" );
+
+            $var = $this->new->zebra();
+        }
+        else
+            $var =& $this->new->{$name};
+
+        return $var;
+    }
+
+    /**
+     * Handle methods that have been deprecated
+     *
+     * @since 2.0.0
+     */
+    public function __call ( $name, $args ) {
+        $name = (string) $name;
+
+        return call_user_func_array( array( $this->new, $name ), $args );
+    }
+
+    /**
+     * Handle variables that have been deprecated
+     *
+     * @since 2.0.0
+     */
+    public function __isset ( $name ) {
+        $name = (string) $name;
+
+        if ( in_array( $name, array( '_data', 'data', 'total', 'total_rows', 'zebra' ) ) )
+            return true;
+        else
+            return isset( $this->new->{$name} );
     }
 }
 
@@ -115,12 +187,40 @@ class Pod
  *
  * @since 1.x
  * @deprecated deprecated since version 2.0.0
+ * @package Pods\Deprecated
  */
 class PodAPI
 {
-    function __construct () {
-        pods_deprecated('PodAPI (class)', '2.0.0', 'pods_api (function)');
-        return pods_api();
+    private $new;
+
+    function __construct ( $type = null, $format = null ) {
+        pods_deprecated( 'PodAPI (class)', '2.0.0', 'pods_api (function)' );
+
+        $this->new = pods_api( $type, $format );
+    }
+
+    /**
+     * Handle variables that have been deprecated
+     *
+     * @since 2.0.0
+     */
+    public function __get ( $name ) {
+        $name = (string) $name;
+
+        $var = $this->new->{$name};
+
+        return $var;
+    }
+
+    /**
+     * Handle methods that have been deprecated
+     *
+     * @since 2.0.0
+     */
+    public function __call ( $name, $args ) {
+        $name = (string) $name;
+
+        return call_user_func_array( array( $this->new, $name ), $args );
     }
 }
 
@@ -132,7 +232,8 @@ class PodAPI
  */
 function pods_ui_manage ($obj) {
     pods_deprecated('pods_ui_manage', '2.0.0', 'pods_ui');
-    return pods_ui($obj);
+
+    return pods_ui($obj, true);
 }
 
 
@@ -174,4 +275,32 @@ function pods_ui_access ($object, $access, $what) {
 function pods_url_variable ($key = 'last', $type = 'url') {
     $output = apply_filters('pods_url_variable', pods_var($key, $type), $key, $type);
     return $output;
+}
+
+/**
+ * Generate form key - INTERNAL USE
+ *
+ * @since 1.2.0
+ * @deprecated deprecated since version 2.0.0
+ */
+function pods_generate_key( $datatype, $uri_hash, $columns, $form_count = 1 ) {
+    $token = wp_create_nonce( 'pods-form-' . $datatype . '-' . (int) $form_count . '-' . $uri_hash . '-' . json_encode( $columns ) );
+    $token = apply_filters( 'pods_generate_key', $token, $datatype, $uri_hash, $columns, (int) $form_count );
+    $_SESSION[ 'pods_form_' . $token ] = $columns;
+    return $token;
+}
+
+/**
+ * Validate form key - INTERNAL USE
+ *
+ * @since 1.2.0
+ * @deprecated deprecated since version 2.0.0
+ */
+function pods_validate_key( $token, $datatype, $uri_hash, $columns = null, $form_count = 1 ) {
+    if ( null === $columns && !empty( $_SESSION ) && isset( $_SESSION[ 'pods_form_' . $token ] ) )
+        $columns = $_SESSION[ 'pods_form_' . $token ];
+    $success = false;
+    if ( false !== wp_verify_nonce( $token, 'pods-form-' . $datatype . '-' . (int) $form_count . '-' . $uri_hash . '-' . json_encode( $columns ) ) )
+        $success = $columns;
+    return apply_filters( 'pods_validate_key', $success, $token, $datatype, $uri_hash, $columns, (int) $form_count );
 }
